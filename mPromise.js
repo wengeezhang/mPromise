@@ -18,31 +18,42 @@
             that.fullfilResult = e;
             that.executed = true;
             if (that.thenCalled && !that.thenExecuted) {
-                //that.then(that.fullfilFun,that.rejectFun);
-                if (that.subPromise && that.subPromise.state == "pending") {
-                    var f = that.subPromise.fullfilFun,
-                        r = that.subPromise.rejectFun;
-                    that.subPromise = that.fullfilFun(that.fullfilResult);
-                    if (!f) {
-                        return;
-                    }
-                    that.subPromise.then(f, r);
+                var f = that.subPromise.fullfilFun,
+                    r = that.subPromise.rejectFun;
+                that.subPromise = that.fullfilFun(that.fullfilResult);
+                if(!(that.subPromise instanceof that.constructor)){
+                    that.subPromise=new that.constructor(function(fFlagFun){
+                        fFlagFun(that.subPromise);
+                    });
                 }
+                if (!f) {//no more then called
+                    return;
+                }
+                that.subPromise.then(f, r);
             }
         }, function(e) {
             that.state = "rejected";
             that.rejectResult = e;
             that.executed = true;
             if (that.thenCalled && !that.thenExecuted) {
-                if (that.subPromise && that.subPromise.state == "pending") {
-                    that.subPromise = that.rejectFun();
+                var f = that.subPromise.fullfilFun,
+                    r = that.subPromise.rejectFun;
+                that.subPromise = that.rejectFun(that.rejectResult);
+                if(!(that.subPromise instanceof that.constructor)){
+                    that.subPromise=new that.constructor(function(fFlagFun){
+                        fFlagFun(that.subPromise);
+                    });
                 }
+                if (!r) {//no more then called
+                    return;
+                }
+                that.subPromise.then(f, r);
             }
         });
     };
     mPromise.prototype.then = function(f, r) {
-        this.fullfilFun = f;
-        this.rejectFun = r;
+        this.fullfilFun = f || null;
+        this.rejectFun = r || null;
         this.thenCalled = true;
         if (!this.executed || this.executor == null) {
             this.subPromise = new this.constructor();
@@ -55,8 +66,12 @@
         } else {
             this.subPromise = this.rejectFun(this.rejectResult);
         }
+        if(!(this.subPromise instanceof this.constructor)){
+            this.subPromise=new this.constructor(function(fFlagFun){
+                fFlagFun(this.subPromise);
+            });
+        }
         return this.subPromise;
-
     }
     var a = new mPromise(function(fFlagFun, rFlagFun) {
         setTimeout(function() {
