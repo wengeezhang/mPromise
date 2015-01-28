@@ -7,6 +7,7 @@
         this.rejectResult = null;
         this.subPromise = null;
         this.returnedToVar=null;
+        this.protoThenCalled=false;
         this.executor = executor || null;
         if (this.executor == null) {
             return;
@@ -74,7 +75,7 @@
     mPromise.prototype.then = function(f, r) {
         this.fullfilFun = f || null;
         this.rejectFun = r || null;
-
+        this.protoThenCalled=true;
         //1.设置链式子代-start
         //--promise has been defered  只需判断this.executed即可
         if(!this.executed){
@@ -85,8 +86,7 @@
 
         //2.then代码块
         //执行then代码块--start
-        if(!this.subPromise){//第二个链式开头(一个链包括一个及以上的promise)，能进到此处，上一个任务已完成
-          //进入到此处，且子代为null,那么直接返回即可。
+        if(!this.subPromise || this.protoThenCalled){//进入到此处，且子代为null,那么直接返回即可。或者开启第二个链式
           var result;
           if(this.state=="fullfiled"){
             result=this.fullfilFun(this.fullfilResult);
