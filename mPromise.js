@@ -5,7 +5,7 @@
         this.rejectFun = null;
         this.fullfilResult = null;
         this.rejectResult = null;
-        this.subPromise = null;
+        this.subPromise = [];
         this.returnedToVar=null;
         this.protoThenCalled=false;
         this.executor = executor || null;
@@ -21,11 +21,11 @@
               that.returnedToVar.state="fullfiled";
               that.returnedToVar.fullfilResult = e;
               that.returnedToVar.executed = true;
-              if(that.returnedToVar.subPromise){//check again whether returnedToVar calls then
+              if(that.returnedToVar.subPromise.length>0){//check again whether returnedToVar calls then
                 that.returnedToVar.then(that.returnedToVar.fullfilFun,that.returnedToVar.rejectFun);
               }
             }
-            if(that.subPromise){
+            if(that.subPromise.length>0){
               that.constructor.thenExec(that,that.fullfilFun,that.fullfilResult);
             }
         }, function(e) {
@@ -36,11 +36,11 @@
               that.returnedToVar.state="rejected";
               that.returnedToVar.rejectResult = e;
               that.returnedToVar.executed = true;
-              if(that.returnedToVar.subPromise){//再次检测这中间等待时，外面的变量var有无then调用
+              if(that.returnedToVar.subPromise.length>0){//再次检测这中间等待时，外面的变量var有无then调用
                 that.returnedToVar.then(that.returnedToVar.fullfilFun,that.returnedToVar.rejectFun);
               }
             }
-            if(that.subPromise){
+            if(that.subPromise.length>0){
               that.constructor.thenExec(that,that.rejectFun,that.rejectResult);
             }
         });
@@ -53,7 +53,7 @@
         that.subPromise.fullfilFun=cacheSubPromise.fullfilFun;
         that.subPromise.rejectFun=cacheSubPromise.rejectFun;
         that.subPromise.subPromise=cacheSubPromise.subPromise;
-        if(!that.subPromise.subPromise){
+        if(that.subPromise.subPromise.length=0){
           that.subPromise.returnedToVar=cacheSubPromise;
         }
       }else{
@@ -61,7 +61,7 @@
                 fFlagFun(result);
             });
         that.subPromise.subPromise=cacheSubPromise.subPromise;
-        if(that.subPromise.subPromise){
+        if(that.subPromise.subPromise.length>0){
           that.subPromise.then(cacheSubPromise.fullfilFun,cacheSubPromise.rejectFun);
         }else{
           cacheSubPromise.state=that.subPromise.state;
@@ -79,14 +79,15 @@
         //1.设置链式子代-start
         //--promise has been defered  只需判断this.executed即可
         if(!this.executed){
-          this.subPromise=new mPromise();
-          return this.subPromise;
+            var newestPromise = new mPromise();
+            this.subPromise.push(newestPromise);
+            return newestPromise;
         }
         //设置链式子代-end
 
         //2.then代码块
         //执行then代码块--start
-        if(!this.subPromise || this.protoThenCalled){//进入到此处，且子代为null,那么直接返回即可。或者开启第二个链式
+        if(this.subPromise.length=0 || this.protoThenCalled){//进入到此处，且子代为null,那么直接返回即可。或者开启第二个链式
           var result;
           if(this.state=="fullfiled"){
             result=this.fullfilFun(this.fullfilResult);
