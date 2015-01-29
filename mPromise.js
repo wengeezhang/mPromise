@@ -22,7 +22,7 @@
               that.returnedToVar.fullfilResult = e;
               that.returnedToVar.executed = true;
               if(that.returnedToVar.subPromise){//check again whether returnedToVar calls then
-                //that.returnedToVar.then(that.returnedToVar.fullfilFun,that.returnedToVar.rejectFun);
+                //that.returnedToVar.then(that.returnedToVar.fullfilFun,that.returnedToVar.rejectFun);//不要二次调用then；其实进入到then后，还是执行thenExec
                 that.constructor.thenExec(that.returnedToVar,that.returnedToVar.fullfilFun,that.returnedToVar.fullfilResult);
               }
             }
@@ -50,6 +50,7 @@
       var result,cacheSubPromise=that.subPromise;
       result=thenArguFun(thatResult);
       if(result instanceof that.constructor){
+        //1.fullfilResult/rejectResult(自动)；2.fullfilFun/rejectFun;3.subPromise扶正
         that.subPromise=result;
         that.subPromise.fullfilFun=cacheSubPromise.fullfilFun;
         that.subPromise.rejectFun=cacheSubPromise.rejectFun;
@@ -58,15 +59,15 @@
           that.subPromise.returnedToVar=cacheSubPromise;
         }
       }else{
-        //既然进到这里，就是当前是同步的，需要唤醒后续的链，故状态一定是fullfiled
         that.subPromise=new that.constructor(function(fFlagFun){
                 fFlagFun(result);
             });
         that.subPromise.fullfilFun=cacheSubPromise.fullfilFun;
         that.subPromise.rejectFun=cacheSubPromise.rejectFun;
         that.subPromise.subPromise=cacheSubPromise.subPromise;
+        //既然进到else，that.subPromise就是同步的，需要检测链条中后续是否还有then调用，故状态一定是fullfiled
         if(that.subPromise.subPromise){
-          //that.subPromise.then(cacheSubPromise.fullfilFun,cacheSubPromise.rejectFun);//其实进入到then后，还是执行thenExec
+          //that.subPromise.then(cacheSubPromise.fullfilFun,cacheSubPromise.rejectFun);//不要二次调用then；其实进入到then后，还是执行thenExec
           that.constructor.thenExec(that.subPromise,that.subPromise.fullfilFun,that.subPromise.fullfilResult);
         }else{
           cacheSubPromise.state=that.subPromise.state;
@@ -91,8 +92,8 @@
 
         //2.then代码块
         //执行then代码块--start
-        if(!this.subPromise || this.protoThenCalled){
-        //切记：过了1年，一个promise才再次调用then。（第二个链式开头的，如果是同步的，属于此；如果是延时的，不属于此，它属于多个subPromise广播）
+        if(!this.subPromise || this.protoThenCalled){//一个promise只能调用一个then；如果二次调用，则表明它开启了一个新链条
+        //切记：过了1年，一个promise才再次调用then。（第二个链式开头的，如果this是同步的，属于此；如果是延时的，不属于此，它属于多个subPromise广播）
         //可以暂时忽略此片段，它只是用于过了n年才调用的情形；
           var result;
           if(this.state=="fullfiled"){
