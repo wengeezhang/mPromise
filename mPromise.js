@@ -22,7 +22,8 @@
               that.returnedToVar.fullfilResult = e;
               that.returnedToVar.executed = true;
               if(that.returnedToVar.subPromise){//check again whether returnedToVar calls then
-                that.returnedToVar.then(that.returnedToVar.fullfilFun,that.returnedToVar.rejectFun);
+                //that.returnedToVar.then(that.returnedToVar.fullfilFun,that.returnedToVar.rejectFun);
+                that.constructor.thenExec(that.returnedToVar,that.returnedToVar.fullfilFun,that.returnedToVar.fullfilResult);
               }
             }
             if(that.subPromise){
@@ -37,7 +38,7 @@
               that.returnedToVar.rejectResult = e;
               that.returnedToVar.executed = true;
               if(that.returnedToVar.subPromise){//再次检测这中间等待时，外面的变量var有无then调用
-                that.returnedToVar.then(that.returnedToVar.fullfilFun,that.returnedToVar.rejectFun);
+                that.constructor.thenExec(that.returnedToVar,that.returnedToVar.rejectFun,that.returnedToVar.rejectResult);
               }
             }
             if(that.subPromise){
@@ -57,12 +58,16 @@
           that.subPromise.returnedToVar=cacheSubPromise;
         }
       }else{
+        //既然进到这里，就是当前是同步的，需要唤醒后续的链，故状态一定是fullfiled
         that.subPromise=new that.constructor(function(fFlagFun){
                 fFlagFun(result);
             });
+        that.subPromise.fullfilFun=cacheSubPromise.fullfilFun;
+        that.subPromise.rejectFun=cacheSubPromise.rejectFun;
         that.subPromise.subPromise=cacheSubPromise.subPromise;
         if(that.subPromise.subPromise){
-          that.subPromise.then(cacheSubPromise.fullfilFun,cacheSubPromise.rejectFun);
+          //that.subPromise.then(cacheSubPromise.fullfilFun,cacheSubPromise.rejectFun);//其实进入到then后，还是执行thenExec
+          that.constructor.thenExec(that.subPromise,that.subPromise.fullfilFun,that.subPromise.fullfilResult);
         }else{
           cacheSubPromise.state=that.subPromise.state;
           cacheSubPromise.fullfilResult=that.subPromise.fullfilResult;
@@ -86,7 +91,9 @@
 
         //2.then代码块
         //执行then代码块--start
-        if(!this.subPromise || this.protoThenCalled){//进入到此处，且子代为null,那么直接返回即可。或者开启第二个链式
+        if(!this.subPromise || this.protoThenCalled){
+        //切记：过了1年，一个promise才再次调用then。（第二个链式开头的，如果是同步的，属于此；如果是延时的，不属于此，它属于多个subPromise广播）
+        //可以暂时忽略此片段，它只是用于过了n年才调用的情形；
           var result;
           if(this.state=="fullfiled"){
             result=this.fullfilFun(this.fullfilResult);
