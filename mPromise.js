@@ -3,9 +3,9 @@
     version:1.0;
     
     prototype:then
-    public static member:alreadyThenContinue
+    public static member:execThenOf
     principle 1：every promise in a chain can't be replaced considering correct referring
-    principle 2：one promise only one fullfil/rejecResult,but can have an array of fullfil/rejecFun or subPromise
+    principle 2：one promise only one fullfil/rejectResult,but can have an array of fullfil/rejecFun or subPromise
     */
     function mPromise(executor) {
         this.executed = false;
@@ -33,11 +33,11 @@
               that.alreadyEquPro.state="fullfiled";
               that.alreadyEquPro.executed=true;
               if(that.alreadyEquPro.subPromiseArr.length){
-                that.constructor.alreadyThenContinue(that.alreadyEquPro,that.alreadyEquPro.fullfilFunArr,e);
+                that.constructor.execThenOf(that.alreadyEquPro);
               }
             }else{
               if(that.subPromiseArr.length){
-                that.constructor.alreadyThenContinue(that,that.fullfilFunArr,e);
+                that.constructor.execThenOf(that);
               };
             }
         }, function(e) {
@@ -46,7 +46,7 @@
             that.executed = true;
             if(that.alreadyEquPro){//只有then，且不是链条最后一个then中产生的promise，才可能有alreadyEquPro。
               if(that.alreadyEquPro.subPromiseArr.length){
-                that.constructor.alreadyThenContinue(that.alreadyEquPro,that.alreadyEquPro.rejectFunArr,e);
+                that.constructor.execThenOf(that.alreadyEquPro);
               }else{
                 that.alreadyEquPro.rejectResult=e;
                 that.alreadyEquPro.state="rejected";
@@ -54,15 +54,24 @@
               }
             }else{
               if(that.subPromiseArr.length){
-                that.constructor.alreadyThenContinue(that,that.rejectFunArr,e);
+                that.constructor.execThenOf(that);
               };
             }
         });
     };
-    mPromise.alreadyThenContinue=function(thenCalledPro,thenArguFunArr,thatResult){//之前的ThenExec
-      var result,thenGenePro;
+    mPromise.execThenOf=function(thenCalledPro){//之前的ThenExec
+      //thenCalledPro:promise that called "then"
+      var result,thenGenePro,thenArguFunArr,supResult;
+      if(thenCalledPro.state=="fullfiled"){
+        thenArguFunArr=thenCalledPro.fullfilFunArr;
+        supResult=thenCalledPro.fullfilResult;
+      }else{
+        thenArguFunArr=thenCalledPro.rejectFunArr;
+        supResult=thenCalledPro.rejectResult;
+      };
       for(var i=0;i<thenCalledPro.subPromiseArr.length;i++){
-          result=thenArguFunArr[i](thatResult);
+          if(thenArguFunArr[i]==null){return;}
+          result=thenArguFunArr[i](supResult);
           if(result instanceof thenCalledPro.constructor){
             //进到这里，thenCalledPro.subPromiseArr[i]的执行肯定被延时啦
             thenGenePro=result;
@@ -80,7 +89,7 @@
             //既然进到else，that.subPromiseArr就是同步的，需要检测链条中后续是否还有then调用，故状态一定是fullfiled
             if(thenCalledPro.subPromiseArr[i].subPromiseArr.length){
               //that.subPromiseArr.then(cachesubPromiseArr.fullfilFunArr,cachesubPromiseArr.rejectFunArr);//不要二次调用then；其实进入到then后，还是执行thenExec
-              thenCalledPro.constructor.alreadyThenContinue(thenCalledPro.subPromiseArr[i],thenCalledPro.subPromiseArr[i].fullfilFunArr,result);
+              thenCalledPro.constructor.execThenOf(thenCalledPro.subPromiseArr[i]);
             }
           }
       }
@@ -90,7 +99,7 @@
         this.rejectFunArr.push(r || null);
         //1.设置链式子代-start
         //--promise has been defered  只需判断this.executed即可
-        var result,thenGenePro;
+        var result,thenGenePro,upperArgFun;
         if(!this.executed){
           thenGenePro=new mPromise();
           this.subPromiseArr.push(thenGenePro);
@@ -107,8 +116,19 @@
         //切记：过了1年，一个promise才再次调用then。（第二个链式开头的，如果this是同步的，属于此；如果是延时的，不属于此，它属于多个subPromiseArr广播）
         //可以暂时忽略此片段，它只是用于过了n年才调用的情形；
           if(this.state=="fullfiled"){
-            result=this.fullfilFunArr.pop()(this.fullfilResult);
+            upperArgFun=this.fullfilFunArr.pop();
+            if(upperArgFun==null){
+              return;
+            }else{
+              result=upperArgFun(this.fullfilResult);
+            }
           }else{
+            upperArgFun=this.rejectFunArr.pop();
+            if(upperArgFun==null){
+              return;
+            }else{
+              result=upperArgFun(this.rejectResult);
+            }
             result=this.rejectFunArr.pop()(this.rejectResult);
           }
           if(result instanceof this.constructor){
