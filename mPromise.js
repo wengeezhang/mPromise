@@ -70,7 +70,15 @@
         supResult=thenCalledPro.rejectResult;
       };
       for(var i=0;i<thenCalledPro.subPromiseArr.length;i++){
-          if(thenArguFunArr[i]==null){return;}
+          if(thenArguFunArr[i]==null){
+            thenCalledPro.subPromiseArr[i].fullfilResult=thenCalledPro.fullfilResult;
+            thenCalledPro.subPromiseArr[i].state=thenCalledPro.state;
+            thenCalledPro.subPromiseArr[i].executed=true;
+            if(thenCalledPro.subPromiseArr[i].subPromiseArr.length){
+              thenCalledPro.constructor.execThenOf(thenCalledPro.subPromiseArr[i]);
+            }
+            return;
+          }
           result=thenArguFunArr[i](supResult);
           if(result instanceof thenCalledPro.constructor){
             //进到这里，thenCalledPro.subPromiseArr[i]的执行肯定被延时啦
@@ -78,12 +86,7 @@
             thenGenePro.alreadyEquPro=thenCalledPro.subPromiseArr[i];
             //等到thenGenePro执行的时候，大致跟下面的else执行的任务一样。
           }else{
-            thenGenePro=new thenCalledPro.constructor(function(fFlagFun){
-                    fFlagFun(result);
-                });
-            //上面产生的thenGenePro，在初始化中，没走executor中的if else的任何逻辑。
-            thenCalledPro.subPromiseArr[i].fullfilResult=thenGenePro.fullfilResult;
-            thenCalledPro.subPromiseArr[i].executor=thenGenePro.executor;
+            thenCalledPro.subPromiseArr[i].fullfilResult=result;
             thenCalledPro.subPromiseArr[i].state="fullfiled";
             thenCalledPro.subPromiseArr[i].executed=true;
             //既然进到else，that.subPromiseArr就是同步的，需要检测链条中后续是否还有then调用，故状态一定是fullfiled
@@ -101,7 +104,7 @@
         //--promise has been defered  只需判断this.executed即可
         var result,thenGenePro,upperArgFun;
         if(!this.executed){
-          thenGenePro=new mPromise();
+          thenGenePro=new this.constructor();
           this.subPromiseArr.push(thenGenePro);
           return thenGenePro;
         }
@@ -118,14 +121,22 @@
           if(this.state=="fullfiled"){
             upperArgFun=this.fullfilFunArr.pop();
             if(upperArgFun==null){
-              return;
+              thenGenePro=new this.constructor();
+              thenGenePro.state="fullfiled";
+              thenGenePro.executed=true;
+              thenGenePro.fullfilResult=this.fullfilResult;
+              return thenGenePro;
             }else{
               result=upperArgFun(this.fullfilResult);
             }
           }else{
             upperArgFun=this.rejectFunArr.pop();
             if(upperArgFun==null){
-              return;
+              thenGenePro=new this.constructor();
+              thenGenePro.executed=true;
+              thenGenePro.state="rejected";
+              thenGenePro.rejectResult=this.rejectResult;
+              return thenGenePro;
             }else{
               result=upperArgFun(this.rejectResult);
             }
