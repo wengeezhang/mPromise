@@ -71,7 +71,11 @@
       };
       for(var i=0;i<thenCalledPro.subPromiseArr.length;i++){
           if(thenArguFunArr[i]==null){
-            thenCalledPro.subPromiseArr[i].fullfilResult=thenCalledPro.fullfilResult;
+            if(thenCalledPro.state=="fullfiled"){
+              thenCalledPro.subPromiseArr[i].fullfilResult=thenCalledPro.fullfilResult;
+            }else{
+              thenCalledPro.subPromiseArr[i].rejectResult=thenCalledPro.rejectResult;
+            }
             thenCalledPro.subPromiseArr[i].state=thenCalledPro.state;
             thenCalledPro.subPromiseArr[i].executed=true;
             if(thenCalledPro.subPromiseArr[i].subPromiseArr.length){
@@ -140,7 +144,6 @@
             }else{
               result=upperArgFun(this.rejectResult);
             }
-            result=this.rejectFunArr.pop()(this.rejectResult);
           }
           if(result instanceof this.constructor){
             thenGenePro=result;
@@ -159,4 +162,53 @@
           }
         }*/
         //Ö´ÐÐthen´úÂë¿é--end
+    }
+    mPromise.prototype.catch=function(callback){
+      return this.then(null,callback);
+    }
+    //static methods
+    mPromise.resolve=function(value){
+      if(value && value.constructor==mPromise){
+        return value;
+      }
+      return new mPromise(function(res,rej){res(value);});
+    }
+    mPromise.reject=function(reason){
+      return new mPromise(function(res,rej){rej(reason);});
+    }
+    mPromise.all=function(entries){
+      var allPromise = new mPromise(function(res,rej){
+        var entryLen=entries.length;
+        var fullfilmentArr=[],rejectFlag=false,entriesResNum=0;
+        for(var i=0;i<entryLen;i++){
+          entries[i].then(function(value){
+            if(!rejectFlag){
+              entriesResNum+=1;
+              fullfilmentArr.push(value);
+              if(entriesResNum==entryLen){
+                res(fullfilmentArr);
+              }
+            }
+          }).catch(function(reason){
+            if(!rejectFlag){
+              rejectFlag=true;
+              rej(reason);
+            }
+          });
+        }
+      });
+      return allPromise;
+    }
+    mPromise.race=function(entries){
+      var racePromise = new mPromise(function(res,rej){
+        var entryLen=entries.length,setFlag=false;
+        for(var i=0;i<entryLen;i++){
+          entries[i].then(function(value){
+            if(!setFlag){setFlag=true;res(value);}
+          }).catch(function(reason){
+            if(!setFlag){setFlag=true;rej(reason);}
+          });
+        }
+      });
+      return racePromise;
     }
