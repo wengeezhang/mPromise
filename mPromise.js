@@ -123,6 +123,10 @@
         //切记：过了1年，一个promise才再次调用then。（第二个链式开头的，如果this是同步的，属于此；如果是延时的，不属于此，它属于多个subPromiseArr广播）
         //可以暂时忽略此片段，它只是用于过了n年才调用的情形；
           if(this.state=="fullfiled"){
+            if(this.fullfilResult && typeof this.fullfilResult.then == "function"){//resole(thenable)
+              this.fullfilResult.then(f);
+              return new this.constructor();
+            }
             upperArgFun=this.fullfilFunArr.pop();
             if(upperArgFun==null){
               thenGenePro=new this.constructor();
@@ -168,10 +172,10 @@
     }
     //static methods
     mPromise.resolve=function(value){
-      if(value && value.constructor==mPromise){
+      if(value && typeof value=="object" && value.constructor==mPromise){//mPromise instance
         return value;
       }
-      return new mPromise(function(res,rej){res(value);});
+      return new mPromise(function(res,rej){res(value);});//thenable obj or others
     }
     mPromise.reject=function(reason){
       return new mPromise(function(res,rej){rej(reason);});
