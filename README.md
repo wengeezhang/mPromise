@@ -1,5 +1,5 @@
 ﻿# Promise
-###Interface:
+###1.Interface:
 #####prototype:
 * then
 * catch  
@@ -10,7 +10,8 @@
 * resolve
 * reject  
 
-###usage:
+###2.usage:
+#####create Promise instance
 ```javascript
 var a=new Promise(function(res,rej){setTimeout(function(){res("succ");},2000);})//succ in the future
 var b=new Promise(function(res,rej){setTimeout(function(){rej("fail");},2000);})//fail in the future
@@ -43,7 +44,7 @@ var e3=new Promise(function(res,rej){setTimeout(function(){res("succC");},4000);
 var f=Promise.race([e1,e2,e3]);
 f.then(function(val){console.log(val);});//显示"succA"  
 ```
-###ps:
+###3.ps:
 //promise“初始化过程完成”后（注意字眼：是实际任务完成后，而不是new Promise的完成），是否要包含下面的“开启当前promise的then函数执行动作”  
             //                     有无then调用  
             //                    有        无  
