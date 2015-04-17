@@ -1,39 +1,58 @@
     /*
     author:wengeezhang;
     version:1.0;
+
+    ************
+    prototype:     then,catch
+    static method: all,race,resolve,reject
+
+    ************
+    Example Analysis:
+    x_promise.then(F1,F2).then(F3,F4).[---].then(Fm,Fm).
     
-    prototype:then
-    public static member:execThenOf
+    x_promise:      a promise which is async.
+    chain:          promise(x_promise)->promise(F1/2)->promise(F3/4)...->promise(Fm/n)
+    promise_Holder: an empty promise returned immediately by x_promise.then(F1,F2).In chain.
+    promise_air:    a promise returned by F1/2();Not in chain.
+    placeholder:    a property of promise_air.It refers to promise_Holder.
+    
+    promise_air.placeholder=promise_Holder.
+
+    promise_Holder is in the chain and holds original information(subPromise) of the chain.
+    promise_air isn't in chain,but it can self be executed in the future and will catch the result and state.
+    finally,refresh promise_Holder's info with promise_air's. (bridge is placeholder)
+
+    ************
     principle 1：every promise in a chain can't be replaced considering correct referring
-    principle 2：one promise only one fullfil/rejectResult,but can have an array of fullfil/rejecFun or subPromise
+    principle 2：one promise can have only one fullfilResult/rejectResult,but can have an array of fullfilFuns/rejecFuns or subPromises
+    It's meanless but throw no error:var a=new Promise(function(res,rej){res("wai");return new Promise(function(res,rej){res("nei");})})
     */
-    function mPromise(executor) {
+    function Promise(executor) {
         this.executed = false;
         this.state = "pending";
         this.fullfilFunArr = [];
         this.rejectFunArr = [];
-        //fullfilResult是当前promise的运行结果，只有一个。
-        //即先有fullfilResult，然后再分发给fullfilFunArrArr
-        this.fullfilResult = null;
-        this.rejectResult = null;
+        this.fullfilResult = null;//only one
+        this.rejectResult = null;//only one
         this.subPromiseArr = [];
-        this.alreadyEquPro=null;
+        this.placeholder=null;
         this.executor = executor || null;
         if (this.executor == null) {
             return;
         }
-        var that = this;
+        var that = this,that_placeholder;
         this.executor(function(e) {
             that.state = "fullfiled";
             that.fullfilResult = e;
             that.executed = true;
-            if(that.alreadyEquPro){//只有then，且不是链条最后一个then中产生的promise，才可能有alreadyEquPro。
-              that.alreadyEquPro.fullfilResult=e;
-              that.alreadyEquPro.executor=that.executor;
-              that.alreadyEquPro.state="fullfiled";
-              that.alreadyEquPro.executed=true;
-              if(that.alreadyEquPro.subPromiseArr.length){
-                that.constructor.execThenOf(that.alreadyEquPro);
+            if(that.placeholder){//只有then，且不是链条最后一个then中产生的promise，才可能有placeholder。
+              that_placeholder=that.placeholder;
+              that_placeholder.fullfilResult=e;
+              that_placeholder.executor=that.executor;
+              that_placeholder.state="fullfiled";
+              that_placeholder.executed=true;
+              if(that_placeholder.subPromiseArr.length){
+                that.constructor.execThenOf(that_placeholder);
               }
             }else{
               if(that.subPromiseArr.length){
@@ -44,13 +63,14 @@
             that.state = "rejected";
             that.rejectResult = e;
             that.executed = true;
-            if(that.alreadyEquPro){//只有then，且不是链条最后一个then中产生的promise，才可能有alreadyEquPro。
-              if(that.alreadyEquPro.subPromiseArr.length){
-                that.constructor.execThenOf(that.alreadyEquPro);
-              }else{
-                that.alreadyEquPro.rejectResult=e;
-                that.alreadyEquPro.state="rejected";
-                that.alreadyEquPro.executed=true;
+            if(that.placeholder){//只有then，且不是链条最后一个then中产生的promise，才可能有placeholder。
+              that_placeholder=that.placeholder;
+              that_placeholder.rejectResult=e;
+              that_placeholder.executor=that.executor;
+              that_placeholder.state="rejected";
+              that_placeholder.executed=true;
+              if(that_placeholder.subPromiseArr.length){
+                that.constructor.execThenOf(that_placeholder);
               }
             }else{
               if(that.subPromiseArr.length){
@@ -59,9 +79,9 @@
             }
         });
     };
-    mPromise.execThenOf=function(thenCalledPro){//之前的ThenExec
+    Promise.execThenOf=function(thenCalledPro){//之前的ThenExec
       //thenCalledPro:promise that called "then"
-      var result,thenGenePro,thenArguFunArr,supResult;
+      var result,thenGenePro,thenArguFunArr,supResult,promise_Holder,promise_air;
       if(thenCalledPro.state=="fullfiled"){
         thenArguFunArr=thenCalledPro.fullfilFunArr;
         supResult=thenCalledPro.fullfilResult;
@@ -70,7 +90,7 @@
         supResult=thenCalledPro.rejectResult;
       };
       for(var i=0;i<thenCalledPro.subPromiseArr.length;i++){
-          if(thenArguFunArr[i]==null){
+          if(thenArguFunArr[i]==null){//directly inherit supPromise's info
             if(thenCalledPro.state=="fullfiled"){
               thenCalledPro.subPromiseArr[i].fullfilResult=thenCalledPro.fullfilResult;
             }else{
@@ -83,25 +103,43 @@
             }
             return;
           }
+          //ship promise_air's info-START
           result=thenArguFunArr[i](supResult);
           if(result instanceof thenCalledPro.constructor){
-            //进到这里，thenCalledPro.subPromiseArr[i]的执行肯定被延时啦
-            thenGenePro=result;
-            thenGenePro.alreadyEquPro=thenCalledPro.subPromiseArr[i];
+            promise_air=result;
+            promise_Holder=thenCalledPro.subPromiseArr[i];
+            promise_air.placeholder=promise_Holder;
+            if(promise_air.executed){//then的参数函数返回如下：new Promise(function(res){res("ss")})
+              if(promise_air.state=="fullfiled"){
+                promise_Holder.fullfilResult=promise_air.fullfilResult;
+                promise_Holder.state="fullfiled";
+              }else{
+                promise_Holder.rejectResult=promise_air.rejectResult;
+                promise_Holder.state="rejected";
+              }
+              promise_Holder.executor=promise_air.executor;
+              promise_Holder.executed=true;
+              if(promise_Holder.subPromiseArr.length){
+                thenCalledPro.constructor.execThenOf(promise_Holder);
+              }
+            }//else情形下，将会在未来执行（构造函数内部的代码）setTimeout(,0) belongs to this
             //等到thenGenePro执行的时候，大致跟下面的else执行的任务一样。
+            //bug:如果result是同步的（new Promise(function(res){res("ss")})），那么在设置thenGenePro.placeholder以前，构造函数内部的executor已经执行完了。
           }else{
+            //then的参数函数返回普通数据，如return "ok";所以state一定是fullfiled,没有rejected
             thenCalledPro.subPromiseArr[i].fullfilResult=result;
             thenCalledPro.subPromiseArr[i].state="fullfiled";
             thenCalledPro.subPromiseArr[i].executed=true;
-            //既然进到else，that.subPromiseArr就是同步的，需要检测链条中后续是否还有then调用，故状态一定是fullfiled
+            //既然进到else，that.subPromiseArr[i]就是同步的，需要检测链条中后续是否还有then调用，故状态一定是fullfiled
             if(thenCalledPro.subPromiseArr[i].subPromiseArr.length){
               //that.subPromiseArr.then(cachesubPromiseArr.fullfilFunArr,cachesubPromiseArr.rejectFunArr);//不要二次调用then；其实进入到then后，还是执行thenExec
               thenCalledPro.constructor.execThenOf(thenCalledPro.subPromiseArr[i]);
             }
           }
+          //ship promise_air's info-END
       }
     }
-    mPromise.prototype.then = function(f, r) {
+    Promise.prototype.then = function(f, r) {
         this.fullfilFunArr.push(f || null);
         this.rejectFunArr.push(r || null);
         //1.设置链式子代-start
@@ -109,7 +147,7 @@
         var result,thenGenePro,upperArgFun;
         if(!this.executed){
           thenGenePro=new this.constructor();
-          this.subPromiseArr.push(thenGenePro);
+          this.subPromiseArr.push(thenGenePro);//async,we call this empty promse "promise_Holder".
           return thenGenePro;
         }
         //设置链式子代-end
@@ -167,21 +205,21 @@
         }*/
         //执行then代码块--end
     }
-    mPromise.prototype.catch=function(callback){
+    Promise.prototype.catch=function(callback){
       return this.then(null,callback);
     }
     //static methods
-    mPromise.resolve=function(value){
-      if(value && typeof value=="object" && value.constructor==mPromise){//mPromise instance
+    Promise.resolve=function(value){
+      if(value && typeof value=="object" && value.constructor==Promise){//Promise instance
         return value;
       }
-      return new mPromise(function(res,rej){res(value);});//thenable obj or others
+      return new Promise(function(res,rej){res(value);});//thenable obj or others
     }
-    mPromise.reject=function(reason){
-      return new mPromise(function(res,rej){rej(reason);});
+    Promise.reject=function(reason){
+      return new Promise(function(res,rej){rej(reason);});
     }
-    mPromise.all=function(entries){
-      var allPromise = new mPromise(function(res,rej){
+    Promise.all=function(entries){
+      var allPromise = new Promise(function(res,rej){
         var entryLen=entries.length;
         var fullfilmentArr=[],rejectFlag=false,entriesResNum=0;
         for(var i=0;i<entryLen;i++){
@@ -203,8 +241,8 @@
       });
       return allPromise;
     }
-    mPromise.race=function(entries){
-      var racePromise = new mPromise(function(res,rej){
+    Promise.race=function(entries){
+      var racePromise = new Promise(function(res,rej){
         var entryLen=entries.length,setFlag=false;
         for(var i=0;i<entryLen;i++){
           entries[i].then(function(value){
