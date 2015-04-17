@@ -3,11 +3,13 @@
 #####prototype:
 * then
 * catch  
+
 #####static method:
 * all
 * race
 * resolve
 * reject  
+
 ###usage:
 ```javascript
 var a=new Promise(function(res,rej){setTimeout(function(){res("succ");},2000);})//succ in the future
