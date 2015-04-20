@@ -48,7 +48,6 @@
             if(that.placeholder){//只有then，且不是链条最后一个then中产生的promise，才可能有placeholder。
               that_placeholder=that.placeholder;
               that_placeholder.fullfilResult=e;
-              that_placeholder.executor=that.executor;
               that_placeholder.state="fullfiled";
               that_placeholder.executed=true;
               if(that_placeholder.subPromiseArr.length){
@@ -66,7 +65,6 @@
             if(that.placeholder){//只有then，且不是链条最后一个then中产生的promise，才可能有placeholder。
               that_placeholder=that.placeholder;
               that_placeholder.rejectResult=e;
-              that_placeholder.executor=that.executor;
               that_placeholder.state="rejected";
               that_placeholder.executed=true;
               if(that_placeholder.subPromiseArr.length){
@@ -82,6 +80,7 @@
     Promise.execThenOf=function(thenCalledPro){//之前的ThenExec
       //thenCalledPro:promise that called "then"
       var result,thenGenePro,thenArguFunArr,supResult,promise_Holder,promise_air;
+      var subPromiseLen,curSubPromise;
       if(thenCalledPro.state=="fullfiled"){
         thenArguFunArr=thenCalledPro.fullfilFunArr;
         supResult=thenCalledPro.fullfilResult;
@@ -89,54 +88,53 @@
         thenArguFunArr=thenCalledPro.rejectFunArr;
         supResult=thenCalledPro.rejectResult;
       };
-      for(var i=0;i<thenCalledPro.subPromiseArr.length;i++){
+      subPromiseLen=thenCalledPro.subPromiseArr.length;
+      for(var i=0;i<subPromiseLen;i++){
+          curSubPromise=thenCalledPro.subPromiseArr[i];
           if(thenArguFunArr[i]==null){//directly inherit supPromise's info
             if(thenCalledPro.state=="fullfiled"){
-              thenCalledPro.subPromiseArr[i].fullfilResult=thenCalledPro.fullfilResult;
+              curSubPromise.fullfilResult=thenCalledPro.fullfilResult;
             }else{
-              thenCalledPro.subPromiseArr[i].rejectResult=thenCalledPro.rejectResult;
+              curSubPromise.rejectResult=thenCalledPro.rejectResult;
             }
-            thenCalledPro.subPromiseArr[i].state=thenCalledPro.state;
-            thenCalledPro.subPromiseArr[i].executed=true;
-            if(thenCalledPro.subPromiseArr[i].subPromiseArr.length){
-              thenCalledPro.constructor.execThenOf(thenCalledPro.subPromiseArr[i]);
-            }
-            return;
-          }
-          //ship promise_air's info-START
-          result=thenArguFunArr[i](supResult);
-          if(result instanceof thenCalledPro.constructor){
-            promise_air=result;
-            promise_Holder=thenCalledPro.subPromiseArr[i];
-            promise_air.placeholder=promise_Holder;
-            if(promise_air.executed){//then的参数函数返回如下：new Promise(function(res){res("ss")})
-              if(promise_air.state=="fullfiled"){
-                promise_Holder.fullfilResult=promise_air.fullfilResult;
-                promise_Holder.state="fullfiled";
-              }else{
-                promise_Holder.rejectResult=promise_air.rejectResult;
-                promise_Holder.state="rejected";
-              }
-              promise_Holder.executor=promise_air.executor;
-              promise_Holder.executed=true;
-              if(promise_Holder.subPromiseArr.length){
-                thenCalledPro.constructor.execThenOf(promise_Holder);
-              }
-            }//else情形下，将会在未来执行（构造函数内部的代码）setTimeout(,0) belongs to this
-            //等到thenGenePro执行的时候，大致跟下面的else执行的任务一样。
-            //bug:如果result是同步的（new Promise(function(res){res("ss")})），那么在设置thenGenePro.placeholder以前，构造函数内部的executor已经执行完了。
+            curSubPromise.state=thenCalledPro.state;
+            curSubPromise.executed=true;
           }else{
-            //then的参数函数返回普通数据，如return "ok";所以state一定是fullfiled,没有rejected
-            thenCalledPro.subPromiseArr[i].fullfilResult=result;
-            thenCalledPro.subPromiseArr[i].state="fullfiled";
-            thenCalledPro.subPromiseArr[i].executed=true;
-            //既然进到else，that.subPromiseArr[i]就是同步的，需要检测链条中后续是否还有then调用，故状态一定是fullfiled
-            if(thenCalledPro.subPromiseArr[i].subPromiseArr.length){
-              //that.subPromiseArr.then(cachesubPromiseArr.fullfilFunArr,cachesubPromiseArr.rejectFunArr);//不要二次调用then；其实进入到then后，还是执行thenExec
-              thenCalledPro.constructor.execThenOf(thenCalledPro.subPromiseArr[i]);
+            result=thenArguFunArr[i](supResult);
+            if(result instanceof thenCalledPro.constructor){
+              promise_air=result;
+              promise_Holder=curSubPromise;
+              promise_air.placeholder=promise_Holder;
+              if(promise_air.executed){//then的参数函数返回如下：new Promise(function(res){res("ss")})
+                if(promise_air.state=="fullfiled"){
+                  promise_Holder.fullfilResult=promise_air.fullfilResult;
+                  promise_Holder.state="fullfiled";
+                }else{
+                  promise_Holder.rejectResult=promise_air.rejectResult;
+                  promise_Holder.state="rejected";
+                }
+                promise_Holder.executed=true;
+                
+              }//else情形下，将会在未来执行（构造函数内部的代码）setTimeout(,0) belongs to this
+              //等到thenGenePro执行的时候，大致跟下面的else执行的任务一样。
+              //bug:如果result是同步的（new Promise(function(res){res("ss")})），那么在设置thenGenePro.placeholder以前，构造函数内部的executor已经执行完了。
+            }else{
+              //then的参数函数返回普通数据，如return "ok";所以state一定是fullfiled,没有rejected
+              curSubPromise.fullfilResult=result;
+              curSubPromise.state="fullfiled";
+              curSubPromise.executed=true;
+              //既然进到else，that.subPromiseArr[i]就是同步的，需要检测链条中后续是否还有then调用，故状态一定是fullfiled
+              
             }
           }
-          //ship promise_air's info-END
+      }
+      for(var j=0;j<subPromiseLen;j++){
+        curSubPromise=thenCalledPro.subPromiseArr[j];
+        if(curSubPromise.executed){
+          if(curSubPromise.subPromiseArr.length){
+            thenCalledPro.constructor.execThenOf(curSubPromise);
+          }
+        }//else:result instanceof Promise,so it's then will be called in the future.
       }
     }
     Promise.prototype.then = function(f, r) {
