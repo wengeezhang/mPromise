@@ -23,8 +23,8 @@
     finally,refresh promise_Holder's info with promise_air's. (bridge is placeholder)
 
     ************
-    principle 1£ºevery promise in a chain can't be replaced considering correct referring
-    principle 2£ºone promise can have only one fullfilResult/rejectResult,but can have an array of fullfilFuns/rejecFuns or subPromises
+    principle 1£º every promise in a chain can't be replaced considering correct referring
+    principle 2£º one promise can have only one fullfilResult/rejectResult,but can have an array of fullfilFuns/rejecFuns or subPromises
     It's meanless but throw no error:var a=new Promise(function(res,rej){res("wai");return new Promise(function(res,rej){res("nei");})})
     */
     function Promise(executor) {
