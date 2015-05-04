@@ -42,13 +42,13 @@
         }
         var that = this,that_placeholder;
         this.executor(function(e) {
-            that.state = "fullfiled";
+            that.state = "resolved";
             that.fullfilResult = e;
             that.executed = true;
             if(that.placeholder){//只有then，且不是链条最后一个then中产生的promise，才可能有placeholder。
               that_placeholder=that.placeholder;
               that_placeholder.fullfilResult=e;
-              that_placeholder.state="fullfiled";
+              that_placeholder.state="resolved";
               that_placeholder.executed=true;
               if(that_placeholder.subPromiseArr.length){
                 that.constructor.execThenOf(that_placeholder);
@@ -81,7 +81,7 @@
       //thenCalledPro:promise that called "then"
       var result,thenGenePro,thenArguFunArr,supResult,promise_Holder,promise_air;
       var subPromiseLen,curSubPromise;
-      if(thenCalledPro.state=="fullfiled"){
+      if(thenCalledPro.state=="resolved"){
         thenArguFunArr=thenCalledPro.fullfilFunArr;
         supResult=thenCalledPro.fullfilResult;
       }else{
@@ -92,7 +92,7 @@
       for(var i=0;i<subPromiseLen;i++){
           curSubPromise=thenCalledPro.subPromiseArr[i];
           if(thenArguFunArr[i]==null){//directly inherit supPromise's info
-            if(thenCalledPro.state=="fullfiled"){
+            if(thenCalledPro.state=="resolved"){
               curSubPromise.fullfilResult=thenCalledPro.fullfilResult;
             }else{
               curSubPromise.rejectResult=thenCalledPro.rejectResult;
@@ -106,9 +106,9 @@
               promise_Holder=curSubPromise;
               promise_air.placeholder=promise_Holder;
               if(promise_air.executed){//then的参数函数返回如下：new Promise(function(res){res("ss")})
-                if(promise_air.state=="fullfiled"){
+                if(promise_air.state=="resolved"){
                   promise_Holder.fullfilResult=promise_air.fullfilResult;
-                  promise_Holder.state="fullfiled";
+                  promise_Holder.state="resolved";
                 }else{
                   promise_Holder.rejectResult=promise_air.rejectResult;
                   promise_Holder.state="rejected";
@@ -119,11 +119,11 @@
               //等到thenGenePro执行的时候，大致跟下面的else执行的任务一样。
               //bug:如果result是同步的（new Promise(function(res){res("ss")})），那么在设置thenGenePro.placeholder以前，构造函数内部的executor已经执行完了。
             }else{
-              //then的参数函数返回普通数据，如return "ok";所以state一定是fullfiled,没有rejected
+              //then的参数函数返回普通数据，如return "ok";所以state一定是resolved,没有rejected
               curSubPromise.fullfilResult=result;
-              curSubPromise.state="fullfiled";
+              curSubPromise.state="resolved";
               curSubPromise.executed=true;
-              //既然进到else，that.subPromiseArr[i]就是同步的，需要检测链条中后续是否还有then调用，故状态一定是fullfiled
+              //既然进到else，that.subPromiseArr[i]就是同步的，需要检测链条中后续是否还有then调用，故状态一定是resolved
               
             }
           }
@@ -158,15 +158,15 @@
           //b.同一个promise第二次调用；即a.then();a.then();
         //切记：过了1年，一个promise才再次调用then。（第二个链式开头的，如果this是同步的，属于此；如果是延时的，不属于此，它属于多个subPromiseArr广播）
         //可以暂时忽略此片段，它只是用于过了n年才调用的情形；
-          if(this.state=="fullfiled"){
-            if(this.fullfilResult && typeof this.fullfilResult.then == "function"){//resole(thenable)
+          if(this.state=="resolved"){
+            if(this.fullfilResult && typeof this.fullfilResult.then == "function"){//resolve(thenable)
               this.fullfilResult.then(f);
               return new this.constructor();
             }
             upperArgFun=this.fullfilFunArr.pop();
             if(upperArgFun==null){
               thenGenePro=new this.constructor();
-              thenGenePro.state="fullfiled";
+              thenGenePro.state="resolved";
               thenGenePro.executed=true;
               thenGenePro.fullfilResult=this.fullfilResult;
               return thenGenePro;
@@ -195,7 +195,7 @@
           this.subPromiseArr.push(thenGenePro);
           return thenGenePro;//
           /*}else{
-          if(this.state=="fullfiled"){
+          if(this.state=="resolved"){
             this.constructor.thenExec(this,this.fullfilFunArr,this.fullfilResult);
           }else{
             this.constructor.thenExec(this,this.rejectFunArr,this.rejectResult);
