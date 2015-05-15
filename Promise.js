@@ -221,20 +221,23 @@
         var entryLen=entries.length;
         var fullfilmentArr=[],rejectFlag=false,entriesResNum=0;
         for(var i=0;i<entryLen;i++){
-          entries[i].then(function(value){
-            if(!rejectFlag){
-              entriesResNum+=1;
-              fullfilmentArr.push(value);
-              if(entriesResNum==entryLen){
-                res(fullfilmentArr);
+          function lcFun(n){
+            entries[n].then(function(value){
+              if(!rejectFlag){
+                entriesResNum+=1;
+                fullfilmentArr[n]=value;
+                if(entriesResNum==entryLen){
+                  res(fullfilmentArr);
+                }
               }
-            }
-          }).catch(function(reason){
-            if(!rejectFlag){
-              rejectFlag=true;
-              rej(reason);
-            }
-          });
+            }).catch(function(reason){
+              if(!rejectFlag){
+                rejectFlag=true;
+                rej(reason);
+              }
+            });
+          }
+          lcFun(i);
         }
       });
       return allPromise;
