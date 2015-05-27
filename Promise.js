@@ -112,13 +112,31 @@
       for(var i=0;i<subPromiseLen;i++){
           curSubPromise=thenCalledPro.subPromiseArr[i];
           if(thenArguFunArr[i]==null){//directly inherit supPromise's info
-            if(thenCalledPro.state=="resolved"){
-              curSubPromise.fullfilResult=thenCalledPro.fullfilResult;
-            }else{
-              curSubPromise.rejectResult=thenCalledPro.rejectResult;
-            }
             curSubPromise.state=thenCalledPro.state;
             curSubPromise.executed=true;
+            if(thenCalledPro.state=="resolved"){
+              curSubPromise.fullfilResult=thenCalledPro.fullfilResult;
+              //以下解决bug1：
+              if(curSubPromise.placeholder){
+                curSubPromise.placeholder.fullfilResult=curSubPromise.fullfilResult;
+                curSubPromise.placeholder.state="resolved";
+                curSubPromise.placeholder.executed=true;
+                if(curSubPromise.placeholder.subPromiseArr.length){
+                  curSubPromise.constructor.execThenOf(curSubPromise.placeholder);
+                }
+              }
+            }else{
+              curSubPromise.rejectResult=thenCalledPro.rejectResult;
+              //以下解决bug1:
+              if(curSubPromise.placeholder){
+                curSubPromise.placeholder.rejectResult=curSubPromise.rejectResult;
+                curSubPromise.placeholder.state="rejected";
+                curSubPromise.placeholder.executed=true;
+                if(curSubPromise.placeholder.subPromiseArr.length){
+                  curSubPromise.constructor.execThenOf(curSubPromise.placeholder);
+                }
+              }
+            }
           }else{
             result=thenArguFunArr[i](supResult);
             if(result instanceof thenCalledPro.constructor){
