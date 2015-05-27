@@ -21,14 +21,16 @@
     promise_Holder is in the chain and holds original information(subPromise) of the chain.
     promise_air isn't in chain,but it can self be executed in the future and will catch the result and state.
     finally,refresh promise_Holder's info with promise_air's. (bridge is placeholder)
-
+    *:then's inner's return is a promise_air,and it's placeholder is then's promise_Holder.
+    
     ************
     principle 1£º every promise in a chain can't be replaced considering correct referring
     principle 2£º one promise can have only one fullfilResult/rejectResult,but can have an array of fullfilFuns/rejecFuns or subPromises
     It's meanless but throw no error:var a=new Promise(function(res,rej){res("wai");return new Promise(function(res,rej){res("nei");})})
     
     ************
-    bug1:then()'s return--promise chain;
+    bug1:
+        then()'s return--promise chain;
     */
     function Promise(executor) {
         this.executed = false;
