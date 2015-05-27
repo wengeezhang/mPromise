@@ -26,6 +26,9 @@
     principle 1： every promise in a chain can't be replaced considering correct referring
     principle 2： one promise can have only one fullfilResult/rejectResult,but can have an array of fullfilFuns/rejecFuns or subPromises
     It's meanless but throw no error:var a=new Promise(function(res,rej){res("wai");return new Promise(function(res,rej){res("nei");})})
+    
+    ************
+    bug1:then()'s return--promise chain;
     */
     function Promise(executor) {
         this.executed = false;
@@ -53,6 +56,15 @@
               if(that_placeholder.subPromiseArr.length){
                 that.constructor.execThenOf(that_placeholder);
               }
+              //以下解决bug1:
+              if(that_placeholder.placeholder){
+                that_placeholder.placeholder.fullfilResult=e;
+                that_placeholder.placeholder.state="resolved";
+                that_placeholder.placeholder.executed=true;
+                if(that_placeholder.placeholder.subPromiseArr.length){
+                  that.constructor.execThenOf(that_placeholder.placeholder);
+                }
+              }
             }else{
               if(that.subPromiseArr.length){
                 that.constructor.execThenOf(that);
@@ -69,6 +81,14 @@
               that_placeholder.executed=true;
               if(that_placeholder.subPromiseArr.length){
                 that.constructor.execThenOf(that_placeholder);
+              }
+              if(that_placeholder.placeholder){
+                that_placeholder.placeholder.fullfilResult=e;
+                that_placeholder.placeholder.state="rejected";
+                that_placeholder.placeholder.executed=true;
+                if(that_placeholder.placeholder.subPromiseArr.length){
+                  that.constructor.execThenOf(that_placeholder.placeholder);
+                }
               }
             }else{
               if(that.subPromiseArr.length){
@@ -123,8 +143,16 @@
               curSubPromise.fullfilResult=result;
               curSubPromise.state="resolved";
               curSubPromise.executed=true;
+              //以下解决bug1:
+              if(curSubPromise.placeholder){
+                curSubPromise.placeholder.fullfilResult=result;
+                curSubPromise.placeholder.state="resolved";
+                curSubPromise.placeholder.executed=true;
+                if(curSubPromise.placeholder.subPromiseArr.length){
+                  curSubPromise.constructor.execThenOf(curSubPromise.placeholder);
+                }
+              }
               //既然进到else，that.subPromiseArr[i]就是同步的，需要检测链条中后续是否还有then调用，故状态一定是resolved
-              
             }
           }
       }
