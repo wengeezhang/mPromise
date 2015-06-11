@@ -1,7 +1,8 @@
     /*
     author:wengeezhang;
-    version:1.5;
+    version:1.6;
     updated 2015/6/11
+    update:tranfer redundant static methods into private methods
 
     ************
     prototype:     then,catch
@@ -51,8 +52,7 @@
         this.state = "pending";
         this.fullfilFunArr = [];
         this.rejectFunArr = [];
-        this.fullfilResult = null;//only one
-        this.rejectResult = null;//only one
+        this.result = null;//only one-resolved/rejected
         this.subPromiseArr = [];
         this.placeholder=null;
         this.executor = executor || null;
@@ -60,150 +60,110 @@
             return;
         }
         var that = this,that_placeholder;
+        //private functions:_airCheck,_execThenOf,_resrej
+        function _airCheck(promise_air,state){
+          if(promise_air.placeholder){
+            //promise_air may be then end of a chain which is returned inside a <then>
+            //so that_placeholder becomes a promise_air
+            promise_air.placeholder.result=promise_air.result;
+            promise_air.placeholder.state=state;
+            promise_air.placeholder.executed=true;
+            if(promise_air.placeholder.subPromiseArr.length){
+              _execThenOf(promise_air.placeholder);
+            }
+          }
+        }
+        function _execThenOf(thenCalledPro){
+           //thenCalledPro:promise calling "then"
+          var result,thenGenePro,thenArguFunArr,supResult;
+          var promise_Holder,promise_air;
+          var subPromiseLen,curSubPromise;
+          if(thenCalledPro.state=="resolved"){
+            thenArguFunArr=thenCalledPro.fullfilFunArr;
+          }else{
+            thenArguFunArr=thenCalledPro.rejectFunArr;
+          };
+          supResult=thenCalledPro.result;
+
+          subPromiseLen=thenCalledPro.subPromiseArr.length;
+          for(var i=0;i<subPromiseLen;i++){
+              curSubPromise=thenCalledPro.subPromiseArr[i];
+              if(thenArguFunArr[i]==null){//directly inherit supPromise's info
+                curSubPromise.state=thenCalledPro.state;
+                curSubPromise.executed=true;
+                curSubPromise.result=thenCalledPro.result;
+                if(thenCalledPro.state=="resolved"){
+                  //below fixes bug1£º
+                  _airCheck(curSubPromise,"resolved");//curSubPromise may become a promise_air
+                }else{
+                  //bolow fixes bug1:
+                  _airCheck(curSubPromise,"rejected");//curSubPromise may become a promise_air
+                }
+              }else{
+                result=thenArguFunArr[i](supResult);
+                if(result instanceof thenCalledPro.constructor){
+                  promise_air=result;
+                  promise_Holder=curSubPromise;
+                  promise_air.placeholder=promise_Holder;
+                  if(promise_air.executed){//like this:new Promise(function(res){res("ss")})
+                    if(promise_air.state=="resolved"){
+                      promise_Holder.state="resolved";
+                    }else{
+                      promise_Holder.state="rejected";
+                    }
+                    promise_Holder.result=promise_air.result;
+                    promise_Holder.executed=true;
+                  }
+                }else{
+                  //must be resolved
+                  curSubPromise.result=result;
+                  curSubPromise.state="resolved";
+                  curSubPromise.executed=true;
+                  //below fixes bug1:
+                  _airCheck(curSubPromise,"resolved");//curSubPromise may become a promise_air
+                }
+              }
+          }
+          for(var j=0;j<subPromiseLen;j++){
+            curSubPromise=thenCalledPro.subPromiseArr[j];
+            if(curSubPromise.executed){
+              if(curSubPromise.subPromiseArr.length){
+                _execThenOf(curSubPromise);
+              }
+            }//else:result instanceof Promise,so it's then will be called in the future.
+          }
+        }
+        function _resrej(result,state){
+          that.state = state;
+          that.result = result;
+          that.executed = true;
+          if(that.placeholder){
+            that_placeholder=that.placeholder;
+            that_placeholder.result=result;
+            that_placeholder.state=state;
+            that_placeholder.executed=true;
+            if(that_placeholder.subPromiseArr.length){//looks forward 
+              _execThenOf(that_placeholder);
+            }
+            //below fixes bug1:
+            _airCheck(that_placeholder,state);_
+          }else{
+            if(that.subPromiseArr.length){
+              _execThenOf(that);
+            };
+          }
+        }
+        //entry point
         this.executor(function(e) {
-            that.state = "resolved";
-            that.fullfilResult = e;
-            that.executed = true;
-            if(that.placeholder){
-              that_placeholder=that.placeholder;
-              that_placeholder.fullfilResult=e;
-              that_placeholder.state="resolved";
-              that_placeholder.executed=true;
-              if(that_placeholder.subPromiseArr.length){//looks forward 
-                that.constructor.execThenOf(that_placeholder);
-              }
-              //below fixes bug1:
-              if(that_placeholder.placeholder){
-                //that_placeholder was end of chain,and the chain is returned inside a <then>
-                //so that_placeholder becomes a promise_air
-                that_placeholder.placeholder.fullfilResult=e;
-                that_placeholder.placeholder.state="resolved";
-                that_placeholder.placeholder.executed=true;
-                if(that_placeholder.placeholder.subPromiseArr.length){
-                  that.constructor.execThenOf(that_placeholder.placeholder);
-                }
-              }
-            }else{
-              if(that.subPromiseArr.length){
-                that.constructor.execThenOf(that);
-              };
-            }
+            _resrej(e,"resolved");
         }, function(e) {
-            that.state = "rejected";
-            that.rejectResult = e;
-            that.executed = true;
-            if(that.placeholder){//
-              that_placeholder=that.placeholder;
-              that_placeholder.rejectResult=e;
-              that_placeholder.state="rejected";
-              that_placeholder.executed=true;
-              if(that_placeholder.subPromiseArr.length){
-                that.constructor.execThenOf(that_placeholder);
-              }
-              if(that_placeholder.placeholder){
-                that_placeholder.placeholder.fullfilResult=e;
-                that_placeholder.placeholder.state="rejected";
-                that_placeholder.placeholder.executed=true;
-                if(that_placeholder.placeholder.subPromiseArr.length){
-                  that.constructor.execThenOf(that_placeholder.placeholder);
-                }
-              }
-            }else{
-              if(that.subPromiseArr.length){
-                that.constructor.execThenOf(that);
-              };
-            }
+            _resrej(e,"rejected");
         });
     };
-    Promise.execThenOf=function(thenCalledPro){//preceding ThenExec
-      //thenCalledPro:promise calling "then"
-      var result,thenGenePro,thenArguFunArr,supResult;
-      var promise_Holder,promise_air;
-      var subPromiseLen,curSubPromise;
-      if(thenCalledPro.state=="resolved"){
-        thenArguFunArr=thenCalledPro.fullfilFunArr;
-        supResult=thenCalledPro.fullfilResult;
-      }else{
-        thenArguFunArr=thenCalledPro.rejectFunArr;
-        supResult=thenCalledPro.rejectResult;
-      };
-      subPromiseLen=thenCalledPro.subPromiseArr.length;
-      for(var i=0;i<subPromiseLen;i++){
-          curSubPromise=thenCalledPro.subPromiseArr[i];
-          if(thenArguFunArr[i]==null){//directly inherit supPromise's info
-            curSubPromise.state=thenCalledPro.state;
-            curSubPromise.executed=true;
-            if(thenCalledPro.state=="resolved"){
-              curSubPromise.fullfilResult=thenCalledPro.fullfilResult;
-              //below fixes bug1£º
-              if(curSubPromise.placeholder){
-                //curSubPromise may be then end of a chain which is returned inside a <then>
-                curSubPromise.placeholder.fullfilResult=curSubPromise.fullfilResult;
-                curSubPromise.placeholder.state="resolved";
-                curSubPromise.placeholder.executed=true;
-                if(curSubPromise.placeholder.subPromiseArr.length){
-                  curSubPromise.constructor.execThenOf(curSubPromise.placeholder);
-                }
-              }
-            }else{
-              curSubPromise.rejectResult=thenCalledPro.rejectResult;
-              //bolow fixes bug1:
-              if(curSubPromise.placeholder){
-                curSubPromise.placeholder.rejectResult=curSubPromise.rejectResult;
-                curSubPromise.placeholder.state="rejected";
-                curSubPromise.placeholder.executed=true;
-                if(curSubPromise.placeholder.subPromiseArr.length){
-                  curSubPromise.constructor.execThenOf(curSubPromise.placeholder);
-                }
-              }
-            }
-          }else{
-            result=thenArguFunArr[i](supResult);
-            if(result instanceof thenCalledPro.constructor){
-              promise_air=result;
-              promise_Holder=curSubPromise;
-              promise_air.placeholder=promise_Holder;
-              if(promise_air.executed){//like this:new Promise(function(res){res("ss")})
-                if(promise_air.state=="resolved"){
-                  promise_Holder.fullfilResult=promise_air.fullfilResult;
-                  promise_Holder.state="resolved";
-                }else{
-                  promise_Holder.rejectResult=promise_air.rejectResult;
-                  promise_Holder.state="rejected";
-                }
-                promise_Holder.executed=true;
-                
-              }
-            }else{
-              //must be resolved
-              curSubPromise.fullfilResult=result;
-              curSubPromise.state="resolved";
-              curSubPromise.executed=true;
-              //below fixes bug1:
-              if(curSubPromise.placeholder){
-                curSubPromise.placeholder.fullfilResult=result;
-                curSubPromise.placeholder.state="resolved";
-                curSubPromise.placeholder.executed=true;
-                if(curSubPromise.placeholder.subPromiseArr.length){
-                  curSubPromise.constructor.execThenOf(curSubPromise.placeholder);
-                }
-              }
-            }
-          }
-      }
-      for(var j=0;j<subPromiseLen;j++){
-        curSubPromise=thenCalledPro.subPromiseArr[j];
-        if(curSubPromise.executed){
-          if(curSubPromise.subPromiseArr.length){
-            thenCalledPro.constructor.execThenOf(curSubPromise);
-          }
-        }//else:result instanceof Promise,so it's then will be called in the future.
-      }
-    }
     Promise.prototype.then = function(f, r) {
         this.fullfilFunArr.push(f || null);
         this.rejectFunArr.push(r || null);
-        
+
         var result,thenGenePro,upperArgFun;
         //defered --start
         if(!this.executed){
@@ -214,8 +174,8 @@
         //defered --end
 
         if(this.state=="resolved"){
-          if(this.fullfilResult && typeof this.fullfilResult.then == "function"){//resolve(thenable)
-            this.fullfilResult.then(f);
+          if(this.result && typeof this.result.then == "function"){//resolve(thenable)
+            this.result.then(f);
             return new this.constructor();
           }
           upperArgFun=this.fullfilFunArr.pop();
@@ -223,10 +183,10 @@
             thenGenePro=new this.constructor();
             thenGenePro.state="resolved";
             thenGenePro.executed=true;
-            thenGenePro.fullfilResult=this.fullfilResult;
+            thenGenePro.result=this.result;
             return thenGenePro;
           }else{
-            result=upperArgFun(this.fullfilResult);
+            result=upperArgFun(this.result);
           }
         }else{
           upperArgFun=this.rejectFunArr.pop();
@@ -234,10 +194,10 @@
             thenGenePro=new this.constructor();
             thenGenePro.executed=true;
             thenGenePro.state="rejected";
-            thenGenePro.rejectResult=this.rejectResult;
+            thenGenePro.result=this.result;
             return thenGenePro;
           }else{
-            result=upperArgFun(this.rejectResult);
+            result=upperArgFun(this.result);
           }
         }
         if(result instanceof this.constructor){
@@ -268,7 +228,7 @@
         var entryLen=entries.length;
         var fullfilmentArr=[],rejectFlag=false,entriesResNum=0;
         for(var i=0;i<entryLen;i++){
-          function lcFun(n){
+          function lcFun(n){//fix closure bug
             entries[n].then(function(value){
               if(!rejectFlag){
                 entriesResNum+=1;
