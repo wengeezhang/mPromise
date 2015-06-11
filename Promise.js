@@ -146,7 +146,7 @@
               _execThenOf(that_placeholder);
             }
             //below fixes bug1:
-            _airCheck(that_placeholder,state);_
+            _airCheck(that_placeholder,state);
           }else{
             if(that.subPromiseArr.length){
               _execThenOf(that);
