@@ -56,7 +56,7 @@
         this.subPromiseArr = [];
         this.placeholder=null;
         this.executor = executor || null;
-        if (this.executor == null) {
+        if (this.executor === null) {
             return;
         }
         var that = this,that_placeholder;
@@ -82,13 +82,13 @@
             thenArguFunArr=thenCalledPro.fullfilFunArr;
           }else{
             thenArguFunArr=thenCalledPro.rejectFunArr;
-          };
+          }
           supResult=thenCalledPro.result;
 
           subPromiseLen=thenCalledPro.subPromiseArr.length;
           for(var i=0;i<subPromiseLen;i++){
               curSubPromise=thenCalledPro.subPromiseArr[i];
-              if(thenArguFunArr[i]==null){//directly inherit supPromise's info
+              if(thenArguFunArr[i]===null){//directly inherit supPromise's info
                 curSubPromise.state=thenCalledPro.state;
                 curSubPromise.executed=true;
                 curSubPromise.result=thenCalledPro.result;
@@ -150,7 +150,7 @@
           }else{
             if(that.subPromiseArr.length){
               _execThenOf(that);
-            };
+            }
           }
         }
         //entry point
@@ -159,7 +159,7 @@
         }, function(e) {
             _resrej(e,"rejected");
         });
-    };
+    }
     Promise.prototype.then = function(f, r) {
         this.fullfilFunArr.push(f || null);
         this.rejectFunArr.push(r || null);
@@ -179,7 +179,7 @@
             return new this.constructor();
           }
           upperArgFun=this.fullfilFunArr.pop();
-          if(upperArgFun==null){
+          if(upperArgFun===null){
             thenGenePro=new this.constructor();
             thenGenePro.state="resolved";
             thenGenePro.executed=true;
@@ -190,7 +190,7 @@
           }
         }else{
           upperArgFun=this.rejectFunArr.pop();
-          if(upperArgFun==null){
+          if(upperArgFun===null){
             thenGenePro=new this.constructor();
             thenGenePro.executed=true;
             thenGenePro.state="rejected";
@@ -209,31 +209,31 @@
         }
         this.subPromiseArr.push(thenGenePro);
         return thenGenePro;//
-    }
+    };
     Promise.prototype.catch=function(callback){
       return this.then(null,callback);
-    }
+    };
     //static methods
     Promise.resolve=function(value){
       if(value && typeof value=="object" && value.constructor==Promise){//Promise instance
         return value;
       }
       return new Promise(function(res,rej){res(value);});//thenable obj or others
-    }
+    };
     Promise.reject=function(reason){
       return new Promise(function(res,rej){rej(reason);});
-    }
-    Promise.all=function(entries){
+    };
+    Promise.all=function(entities){
       var allPromise = new Promise(function(res,rej){
-        var entryLen=entries.length;
-        var fullfilmentArr=[],rejectFlag=false,entriesResNum=0;
-        for(var i=0;i<entryLen;i++){
+        var entityLen=entities.length;
+        var fullfilmentArr=[],rejectFlag=false,entitiesResNum=0;
+        for(var i=0;i<entityLen;i++){
           function lcFun(n){//fix closure bug
-            entries[n].then(function(value){
+            entities[n].then(function(value){
               if(!rejectFlag){
-                entriesResNum+=1;
+                entitiesResNum+=1;
                 fullfilmentArr[n]=value;
-                if(entriesResNum==entryLen){
+                if(entitiesResNum==entityLen){
                   res(fullfilmentArr);
                 }
               }
@@ -248,12 +248,12 @@
         }
       });
       return allPromise;
-    }
-    Promise.race=function(entries){
+    };
+    Promise.race=function(entities){
       var racePromise = new Promise(function(res,rej){
-        var entryLen=entries.length,setFlag=false;
-        for(var i=0;i<entryLen;i++){
-          entries[i].then(function(value){
+        var entityLen=entities.length,setFlag=false;
+        for(var i=0;i<entityLen;i++){
+          entities[i].then(function(value){
             if(!setFlag){setFlag=true;res(value);}
           }).catch(function(reason){
             if(!setFlag){setFlag=true;rej(reason);}
@@ -261,4 +261,4 @@
         }
       });
       return racePromise;
-    }
+    };
