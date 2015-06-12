@@ -11,7 +11,7 @@
 
     ************
     ** EXAMPLE
-    x_promise.then(F1,F2).then(F3,F4).[---].then(Fm,Fm).
+    x_promise.then(F1,F2).then(F3,F4).[---].then(Fm,Fn).
     ** ANALYSIS
     x_promise:      a promise which is async.
     chain:          promise(x_promise)->promise(F1/2)->promise(F3/4)...->promise(Fm/n)
