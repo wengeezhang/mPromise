@@ -56,9 +56,8 @@
         this.result = null;//only one-resolved/rejected
         this.subPromiseArr = [];
         this.placeholder=null;
-        this.executor = executor || null;
-        if (this.executor === null) {
-            return;
+        if(!executor){//can aslo add '||typeof executor != "function"'
+          return;
         }
         var that = this,that_placeholder;
         //private functions:_airCheck,_execThenOf,_resrej
@@ -155,7 +154,7 @@
           }
         }
         //entry point
-        this.executor(function(e) {
+        executor(function(e) {
             _resrej(e,"resolved");
         }, function(e) {
             _resrej(e,"rejected");
