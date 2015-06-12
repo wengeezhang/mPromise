@@ -92,27 +92,19 @@
                 curSubPromise.state=thenCalledPro.state;
                 curSubPromise.executed=true;
                 curSubPromise.result=thenCalledPro.result;
-                if(thenCalledPro.state=="resolved"){
-                  //below fixes bug1£º
-                  _airCheck(curSubPromise,"resolved");//curSubPromise may become a promise_air
-                }else{
-                  //bolow fixes bug1:
-                  _airCheck(curSubPromise,"rejected");//curSubPromise may become a promise_air
-                }
+                //below fixes bug1£º
+                _airCheck(curSubPromise,thenCalledPro.state);//curSubPromise may become a promise_air
               }else{
                 result=thenArguFunArr[i](supResult);
                 if(result instanceof thenCalledPro.constructor){
                   promise_air=result;
                   promise_Holder=curSubPromise;
                   promise_air.placeholder=promise_Holder;
-                  if(promise_air.executed){//like this:new Promise(function(res){res("ss")})
-                    if(promise_air.state=="resolved"){
-                      promise_Holder.state="resolved";
-                    }else{
-                      promise_Holder.state="rejected";
-                    }
+                  if(promise_air.executed){//like this:return new Promise(function(res){res("ss")})
+                    promise_Holder.state=promise_air.state;
                     promise_Holder.result=promise_air.result;
                     promise_Holder.executed=true;
+                    _airCheck(curSubPromise,thenCalledPro.state);//curSubPromise may become a promise_air
                   }
                 }else{
                   //must be resolved
