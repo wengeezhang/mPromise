@@ -2,9 +2,10 @@
     author:wengeezhang;
     version:1.6;
     updated 2015/6/11
-    update:tranfer redundant static methods into private methods
+    update:Promise.all,when one rejected,break loop
 
     ************
+    *interface
     prototype:     then,catch
     static method: all,race,resolve,reject
 
@@ -228,6 +229,9 @@
         var entityLen=entities.length;
         var fullfilmentArr=[],rejectFlag=false,entitiesResNum=0;
         for(var i=0;i<entityLen;i++){
+          if(rejectFlag){
+            break;
+          }
           function lcFun(n){//fix closure bug
             entities[n].then(function(value){
               if(!rejectFlag){
