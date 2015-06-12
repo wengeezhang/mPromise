@@ -34,6 +34,9 @@
          *may has subPromises,
          *may be the end of a chain and be returned,so it becomes another promise_air
     And any <then> being the end of a chain which is returned inside another <then> must be checked because of bug1
+    
+    'parallel subPromise check' checks curSubPromise
+    '_airCheck'                 checks curSubPromise.placeholder
 
     ************
     principle 1£º every promise in a chain can't be replaced considering correct referring
@@ -116,6 +119,7 @@
                 }
               }
           }
+          //parallel subPromise check
           for(var j=0;j<subPromiseLen;j++){
             curSubPromise=thenCalledPro.subPromiseArr[j];
             if(curSubPromise.executed){
