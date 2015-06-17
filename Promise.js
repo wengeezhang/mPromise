@@ -1,8 +1,8 @@
     /*
     author:wengeezhang;
     version:1.6;
-    updated 2015/6/11
-    update:Promise.all,when one rejected,break loop
+    updated 2015/6/17
+    branch save:state mutable,apply scene:flash sale
 
     ************
     *interface
