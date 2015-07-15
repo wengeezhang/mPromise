@@ -38,8 +38,9 @@ And any <then> being the end of a chain which is returned inside another <then> 
 **due to including of microtask,sync process is also pending,so _placeholderSubprosCheck must be an iterator.
 very tip:******as for any promise that need subPromise check in future,just set air.placeholder to it.
 
-'parallel subPromise check' checks curSubPromise
-'_placeholderSubprosCheck'                 checks curSubPromise.placeholder
+****very important:
+'parallel subPromise check' checks curSubPromise.subPromiseArr.length
+'_placeholderSubprosCheck'  checks curSubPromise.placeholder
 
 ************
 principle 1: every promise in a chain can't be replaced considering correct referring
@@ -105,7 +106,7 @@ bug1:
       }
       pro_air=thenCb(supResult);
       if(pro_air instanceof pro_placeholder.constructor){
-        pro_air.placeholder=pro_placeholder;
+        pro_air.placeholder=pro_placeholder;//do not delete:return chain
         if(pro_air.state != 'pending'){
           _shipandAircheck(pro_placeholder,pro_air.result,pro_air.state);
         }
