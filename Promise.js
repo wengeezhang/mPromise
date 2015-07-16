@@ -79,19 +79,20 @@ bug1:
       }
     }
   }
-  function _checkResultOf(result,fatherPro){
+  function _checkResultOf(result,fatherPro,flag){
     if(result && result instanceof fatherPro.constructor){
       if(result.state == 'pending'){
         result.placeholder=fatherPro;
-        return false;
+        flag.hangup=true;
+        return;
       }else{
-        return _checkResultOf(result.result,fatherPro);
+        return _checkResultOf(result.result,fatherPro,flag);
       }
     }else if(result && typeof result.then == 'function'){
-      var flag=false,supResult;
-      result.then(function(val){supResult=val;flag=true;});
-      if(!flag){return false;}
-      return _checkResultOf(supResult,fatherPro);
+      var callResolve=false,supResult;
+      result.then(function(val){supResult=val;callResolve=true;});
+      if(!callResolve){flag.hangup=true;return;}
+      return _checkResultOf(supResult,fatherPro,flag);
     }else{
       return result;
     }
@@ -100,10 +101,10 @@ bug1:
     if(thenCb===null){
       _shipandAircheck(pro_placeholder,fatherPro.result,fatherPro.state);
     }else{
-      var supResult = fatherPro.result;
+      var supResult = fatherPro.result,flag={hangup:false};
       if(fatherPro.state == 'resolved'){
-        supResult = _checkResultOf(fatherPro.result,fatherPro);
-        if(supResult == false){//supResult maybe undefined which is a normal result;
+        supResult = _checkResultOf(fatherPro.result,fatherPro,flag);
+        if(flag.hangup){
           return;
         }
       }
