@@ -1,8 +1,7 @@
-1.parallel then chain
+//1.parallel then chain
 var a=new Promise(function(res,rej){
   setTimeout(function(){res("haha1");},1000);
 });
-
 a.then(function(val){console.log(val);return "haha2-succ";},
   function(reason){console.log(reason);return "haha2-fail";}
 ).then(function(val){
@@ -12,7 +11,6 @@ a.then(function(val){console.log(val);return "haha2-succ";},
   console.log(reason);
   return new Promise(function(res,rej){setTimeout(function(){res("haha4-succ");},1000);})
 }).then(function(val){console.log(val);return 1;}) 
-
 a.then(function(val){console.log(val);return "b2-succ";},
   function(reason){console.log(reason);return "b2-fail";}
 ).then(function(val){
@@ -24,7 +22,7 @@ a.then(function(val){console.log(val);return "b2-succ";},
 }).then(function(val){console.log(val);return 1;}) 
 
 
-2.return a then chain
+//2.return a then chain
 var a=new Promise(function(res,rej){
 setTimeout(function(){res("hah1");},1000);
 }).then(function(val){
@@ -38,7 +36,7 @@ setTimeout(function(){res("hah1");},1000);
 }).then(function(val){console.log(val);});
 
 
-3.another return a then chain
+//3.another return a then chain
 var a=new Promise(function(res,rej){
 setTimeout(function(){res("hah1");},1000);
 }).then(function(val){
@@ -51,7 +49,7 @@ setTimeout(function(){res("hah1");},1000);
             });
 }).then(function(val){console.log(val);});
 
-4.again another return a then chain
+//4.again another return a then chain
 var wen=Promise.resolve("ddd").then(function(value){
   console.log(value);
   return new Promise(function(res,rej){
@@ -65,7 +63,7 @@ var wen=Promise.resolve("ddd").then(function(value){
 });
 wen.then(function(value){console.log(value);});
 
-5.microtask + macrotask queue
+//5.microtask + macrotask queue
 setTimeout(function(){
   console.log("s1");
   new Promise(function(res,rej){
@@ -89,7 +87,7 @@ setTimeout(function(){console.log("s5");},1000);
 console.log("start");
 
 
-6.another macritask+microtask
+//6.another macritask+microtask
 setTimeout(function(){
   console.log("s1");
   new Promise(function(res,rej){
@@ -112,13 +110,13 @@ setTimeout(function(){console.log("s4");},1000);
 setTimeout(function(){console.log("s5");},1000);
 console.log("start");
 
-7.a simple microtask+macrotask log:1,3,dd,2;
+//7.a simple microtask+macrotask log:1,3,dd,2;
 console.log(1);
 setTimeout(function(){console.log(2);},0);
 Promise.resolve("dd").then(function(val){console.log(val);});
 console.log(3);
 
-8.horrible nesting to check microtask,log:dd,ddd,dddd,...,ddddddddd
+//8.horrible nesting to check microtask,log:dd,ddd,dddd,...,ddddddddd
 Promise.resolve("dd").then(function(val){
   console.log(val);
   return Promise.resolve("ddd").then(function(val){
@@ -138,61 +136,61 @@ Promise.resolve("dd").then(function(val){
  console.log(val);
 });
 
-9.thenable object:
-a.//log:function,haha
+//9.thenable object:
+//a.//log:function,haha
 Promise.resolve({then:function(d){console.log(d);d("haha")}}).then(function(val){console.log(val);});
-b.//log:1
+//b.//log:1
 Promise.resolve({then:function(){console.log(1);}}).then(function(val){console.log(val);});
-c.//log:jd,hshs;
+//c.//log:jd,hshs;
 new Promise(function(res,rej){res({then:function(resolve){console.log("jd");resolve("hshs")}})}).then(function(val){console.log(val);});
-d.//log:jd
+//d.//log:jd
 var wen=new Promise(function(res,rej){setTimeout(function(){res({then:function(){console.log("jd");}})},1000);});
 wen.then(function(val){console.log(val);});
-e.//log:function,jd
+//e.//log:function,jd
 var wen=new Promise(function(res,rej){setTimeout(function(){res({then:function(d){console.log(d);d("jd");}})},1000);});
 wen.then(function(val){console.log(val);});
-f.//log:undefined
+//f.//log:undefined
 Promise.resolve({then:function(d){d()}}).then(function(val){console.log(val);});
 
-10.res(promise);both log:dd
-a.
+//10.res(promise);both log:dd
+//a.
 var wen=new Promise(function(res,rej){res(new Promise(function(res,rej){setTimeout(function(){res("dd")},1000)}));});
 wen.then(function(val){console.log(val);});
-b.
+//b.
 var wen=new Promise(function(res,rej){res(new Promise(function(res,rej){res(Promise.resolve("dd"));}));});
 wen.then(function(val){console.log(val);});
 
-11.res(thenable/promise) plus nesting
-a.log:dd
+//11.res(thenable/promise) plus nesting
+//a.log:dd
 Promise.resolve({then:function(d){d({then:function(f){f("dd");}})}}).then(function(val){console.log(val);}); 
-b.log:dd
+//b.log:dd
 Promise.resolve({then:function(d){d({then:function(f){f(Promise.resolve({then:function(ll){ll("dd");}}));}})}}).then(function(val){console.log(val);});
-c.log:dd
+//c.log:dd
 Promise.resolve({then:function(d){d({then:function(f){f(Promise.resolve({then:function(ll){ll(Promise.resolve("dd"));}}));}})}}).then(function(val){console.log(val);});
-d.log:dd
+//d.log:dd
 Promise.resolve({then:function(d){d({then:function(f){f(new Promise(function(res,rej){setTimeout(function(){res("dd")},1000)}));}})}}).then(function(val){console.log(val);});
-e.log:dd
+//e.log:dd
 Promise.resolve({then:function(d){d({then:function(f){f(Promise.resolve({then:function(ll){ll(Promise.resolve(new Promise(function(res,rej){setTimeout(function(){res({then:function(mm){mm("dd");}});},1000);})));}}));}})}}).then(function(val){console.log(val);});
 
 
-12. a VS b VS c
-a.log:jd  --(no d(),so just log "jd",not log undefined.)
+//12. a VS b VS c
+//a.log:jd  --(no d(),so just log "jd",not log undefined.)
 var wen=new Promise(function(res,rej){setTimeout(function(){res({then:function(d){console.log("jd");}})},1000);});
 wen.then(function(val){console.log(val);});
-b.log:dd,ddd
+//b.log:dd,ddd
 Promise.resolve("dd").then(function(val){console.log(val);return "ddd";}).then(function(val){console.log(val);});
-c.log:dd,undefined
+//c.log:dd,undefined
 Promise.resolve("dd").then(function(val){console.log(val);}).then(function(val){console.log(val);});
 
-13.reject，just use whatever passed in;log:object
+//13.reject，just use whatever passed in;log:object
 Promise.reject({then:function(d){console.log(1);d(2);}}).catch(function(val){console.log(val);});
 
-14.res(false/undefined/null)
-a.log:false
+//14.res(false/undefined/null)
+//a.log:false
 new Promise(function(res,rej){res(false);}).then(function(val){console.log(val);}); 
-b.log:1,false
+//b.log:1,false
 Promise.resolve({then:function(d){console.log(1);d(false);}}).then(function(val){console.log(val);});
-c.log:null
+//c.log:null
 new Promise(function(res,rej){res(null);}).then(function(val){console.log(val);});
-d.log:undefined
+//d.log:undefined
 new Promise(function(res,rej){res(undefined);}).then(function(val){console.log(val);});
