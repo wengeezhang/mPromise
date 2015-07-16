@@ -90,7 +90,7 @@ bug1:
     }else if(result && typeof result.then == 'function'){
       var flag=false,supResult;
       result.then(function(val){supResult=val;flag=true;});
-      if(!flag){return;}
+      if(!flag){return false;}
       return _checkResultOf(supResult,fatherPro);
     }else{
       return result;
@@ -100,9 +100,12 @@ bug1:
     if(thenCb===null){
       _shipandAircheck(pro_placeholder,fatherPro.result,fatherPro.state);
     }else{
-      var supResult=_checkResultOf(fatherPro.result,fatherPro);
-      if(!supResult){
-        return;
+      var supResult = fatherPro.result;
+      if(fatherPro.state == 'resolved'){
+        supResult = _checkResultOf(fatherPro.result,fatherPro);
+        if(supResult == false){//supResult maybe undefined which is a normal result;
+          return;
+        }
       }
       pro_air=thenCb(supResult);
       if(pro_air instanceof pro_placeholder.constructor){
