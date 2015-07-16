@@ -1,36 +1,36 @@
 1.parallel then chain
 var a=new Promise(function(res,rej){
-  setTimeout(function(){res("haha1");},2000);
+  setTimeout(function(){res("haha1");},1000);
 });
 
 a.then(function(val){console.log(val);return "haha2-succ";},
   function(reason){console.log(reason);return "haha2-fail";}
 ).then(function(val){
   console.log(val);
-  return new Promise(function(res,rej){setTimeout(function(){rej("haha3-fail");},2000);})
+  return new Promise(function(res,rej){setTimeout(function(){rej("haha3-fail");},1000);})
 }).catch(function(reason){
   console.log(reason);
-  return new Promise(function(res,rej){setTimeout(function(){res("haha4-succ");},2000);})
+  return new Promise(function(res,rej){setTimeout(function(){res("haha4-succ");},1000);})
 }).then(function(val){console.log(val);return 1;}) 
 
 a.then(function(val){console.log(val);return "b2-succ";},
   function(reason){console.log(reason);return "b2-fail";}
 ).then(function(val){
   console.log(val);
-  return new Promise(function(res,rej){setTimeout(function(){rej("b3-fail");},2000);})
+  return new Promise(function(res,rej){setTimeout(function(){rej("b3-fail");},1000);})
 }).catch(function(reason){
   console.log(reason);
-  return new Promise(function(res,rej){setTimeout(function(){res("b4-succ");},2000);})
+  return new Promise(function(res,rej){setTimeout(function(){res("b4-succ");},1000);})
 }).then(function(val){console.log(val);return 1;}) 
 
 
 2.return a then chain
 var a=new Promise(function(res,rej){
-setTimeout(function(){res("hah1");},2000);
+setTimeout(function(){res("hah1");},1000);
 }).then(function(val){
    console.log(val);
    return new Promise(function(res,rej){
-             setTimeout(function(){res("hah2");},2000);
+             setTimeout(function(){res("hah2");},1000);
           }).then(function(val){
               console.log(val);
               return "hah3";
@@ -40,14 +40,14 @@ setTimeout(function(){res("hah1");},2000);
 
 3.another return a then chain
 var a=new Promise(function(res,rej){
-setTimeout(function(){res("hah1");},2000);
+setTimeout(function(){res("hah1");},1000);
 }).then(function(val){
    console.log(val);
    return new Promise(function(res,rej){
-             setTimeout(function(){res("hah2");},2000);
+             setTimeout(function(){res("hah2");},1000);
           }).then(function(val){
               console.log(val);
-              return new Promise(function(res,rej){setTimeout(function(){res("hah3");},2000);});
+              return new Promise(function(res,rej){setTimeout(function(){res("hah3");},1000);});
             });
 }).then(function(val){console.log(val);});
 
@@ -55,7 +55,7 @@ setTimeout(function(){res("hah1");},2000);
 var wen=Promise.resolve("ddd").then(function(value){
   console.log(value);
   return new Promise(function(res,rej){
-           setTimeout(function(){res("hah1");},2000);
+           setTimeout(function(){res("hah1");},1000);
          }).then(function(val){
                 console.log(val);
                 return Promise.resolve("1").then(function(val){
@@ -184,6 +184,15 @@ Promise.resolve("dd").then(function(val){console.log(val);return "ddd";}).then(f
 c.log:dd,undefined
 Promise.resolve("dd").then(function(val){console.log(val);}).then(function(val){console.log(val);});
 
-13.reject，just use whatever passed in
+13.reject，just use whatever passed in;log:object
 Promise.reject({then:function(d){console.log(1);d(2);}}).catch(function(val){console.log(val);});
 
+14.res(false/undefined/null)
+a.log:false
+new Promise(function(res,rej){res(false);}).then(function(val){console.log(val);}); 
+b.log:1,false
+Promise.resolve({then:function(d){console.log(1);d(false);}}).then(function(val){console.log(val);});
+c.log:null
+new Promise(function(res,rej){res(null);}).then(function(val){console.log(val);});
+d.log:undefined
+new Promise(function(res,rej){res(undefined);}).then(function(val){console.log(val);});
