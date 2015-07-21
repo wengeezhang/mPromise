@@ -121,7 +121,7 @@ bug1:
       }
     }else{
       flag.state="rejected";
-      supResult = fatherPro.result
+      supResult = fatherPro.result;
       thenCb=fatherPro.rejectFunArr[index];
     }
     //check thenCb null
