@@ -86,37 +86,57 @@ bug1:
         flag.hangup=true;
         return;
       }else{
+        flag.state=result.state;
         return _checkResultOf(result.result,fatherPro,flag);
       }
     }else if(result && typeof result.then == 'function'){
       var callResolve=false,supResult;
-      result.then(function(val){supResult=val;callResolve=true;});
+      result.then(function(val){
+        supResult=val;callResolve=true;
+        flag.state="resolved";
+      },function(val){
+        supResult=val;callResolve=true;
+        flag.state="rejected";
+      });
       if(!callResolve){flag.hangup=true;return;}
       return _checkResultOf(supResult,fatherPro,flag);
     }else{
       return result;
     }
   }
-  function _thenCbExeAndAircheck(pro_placeholder,fatherPro,thenCb){
-    if(thenCb===null){
-      _shipandAircheck(pro_placeholder,fatherPro.result,fatherPro.state);
+  function _thenCbExeAndAircheck(pro_placeholder,fatherPro,index){
+    var supResult,thenCb,flag={hangup:false};
+    //select thenCb,supResult
+    if(fatherPro.state == 'resolved'){
+      flag.state="resolved";//init,may be changed in _checkResultOf
+      //two scenes that will change state:result is sync promise instance or thenable
+      supResult = _checkResultOf(fatherPro.result,fatherPro,flag);
+      if(flag.hangup){
+        return;
+      }
+      if(flag.state=="resolved"){
+        thenCb=fatherPro.fullfilFunArr[index];
+      }else{
+        thenCb=fatherPro.rejectFunArr[index];
+      }
     }else{
-      var supResult = fatherPro.result,flag={hangup:false};
-      if(fatherPro.state == 'resolved'){
-        supResult = _checkResultOf(fatherPro.result,fatherPro,flag);
-        if(flag.hangup){
-          return;
-        }
+      flag.state="rejected";
+      supResult = fatherPro.result
+      thenCb=fatherPro.rejectFunArr[index];
+    }
+    //check thenCb null
+    if(thenCb===null){
+      _shipandAircheck(pro_placeholder,supResult,flag.state);
+      return;
+    }
+    pro_air=thenCb(supResult);
+    if(pro_air instanceof pro_placeholder.constructor){
+      pro_air.placeholder=pro_placeholder;//do not delete:return chain
+      if(pro_air.state != 'pending'){
+        _shipandAircheck(pro_placeholder,pro_air.result,pro_air.state);
       }
-      pro_air=thenCb(supResult);
-      if(pro_air instanceof pro_placeholder.constructor){
-        pro_air.placeholder=pro_placeholder;//do not delete:return chain
-        if(pro_air.state != 'pending'){
-          _shipandAircheck(pro_placeholder,pro_air.result,pro_air.state);
-        }
-      }else{//pro_air is string/object
-        _shipandAircheck(pro_placeholder,pro_air,'resolved');
-      }
+    }else{//pro_air is string/object
+      _shipandAircheck(pro_placeholder,pro_air,'resolved');
     }
   }
   function _shipandAircheck(proHolder,result,state){
@@ -127,17 +147,11 @@ bug1:
   function _execThenCb(thenCalledPro,sync){
      //thenCalledPro:promise calling "then"
     var thenCbArr,pro_placeholder,subPromiseLen;
-    if(thenCalledPro.state=="resolved"){
-      //thenable object's check moved to _thenCbExeAndAircheck
-      thenCbArr=thenCalledPro.fullfilFunArr;
-    }else{
-      thenCbArr=thenCalledPro.rejectFunArr;
-    }
     subPromiseLen=thenCalledPro.subPromiseArr.length;
     for(var i=0;i<subPromiseLen;i++){
         if(sync && i<(subPromiseLen-1)){continue;}
         pro_placeholder=thenCalledPro.subPromiseArr[i];
-        _thenCbExeAndAircheck(pro_placeholder,thenCalledPro,thenCbArr[i]);
+        _thenCbExeAndAircheck(pro_placeholder,thenCalledPro,i);
     }
     //parallel subPromise check
     for(var j=0;j<subPromiseLen;j++){
