@@ -148,14 +148,14 @@ bug1:
      //thenCalledPro:promise calling "then"
     var thenCbArr,pro_placeholder,subPromiseLen;
     subPromiseLen=thenCalledPro.subPromiseArr.length;
+    if(thenCalledPro.thened){return;}//a.then a.then a-sync;
+    thenCalledPro.thened=true;
     for(var i=0;i<subPromiseLen;i++){
-        if(sync && i<(subPromiseLen-1)){continue;}
         pro_placeholder=thenCalledPro.subPromiseArr[i];
         _thenCbExeAndAircheck(pro_placeholder,thenCalledPro,i);
     }
     //parallel subPromise check
     for(var j=0;j<subPromiseLen;j++){
-      if(sync && i<(subPromiseLen-1)){continue;}
       pro_placeholder=thenCalledPro.subPromiseArr[j];
       if(pro_placeholder.state != 'pending'){
         if(pro_placeholder.subPromiseArr.length){
@@ -177,6 +177,7 @@ bug1:
       this.state = "pending";
       this.fullfilFunArr = [];
       this.rejectFunArr = [];
+      this.thened=false;
       this.result = null;//only one-resolved/rejected
       this.subPromiseArr = [];
       this.placeholder=null;
