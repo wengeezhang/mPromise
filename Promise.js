@@ -130,6 +130,7 @@ bug1:
       return;
     }
     pro_air=thenCb(supResult);
+    fatherPro.thened=true;//must not in "check thenCb null".
     if(pro_air instanceof pro_placeholder.constructor){
       pro_air.placeholder=pro_placeholder;//do not delete:return chain
       if(pro_air.state != 'pending'){
@@ -149,7 +150,7 @@ bug1:
     var thenCbArr,pro_placeholder,subPromiseLen;
     subPromiseLen=thenCalledPro.subPromiseArr.length;
     if(thenCalledPro.thened){return;}//a.then a.then a-sync;
-    thenCalledPro.thened=true;
+    //thenCalledPro.thened=true moveto _thenCbExeAndAircheck
     for(var i=0;i<subPromiseLen;i++){
         pro_placeholder=thenCalledPro.subPromiseArr[i];
         _thenCbExeAndAircheck(pro_placeholder,thenCalledPro,i);
@@ -279,5 +280,8 @@ bug1:
     });
     return racePromise;
   }; 
-  root.Promise=Promise;
+  //export the constructor
+  if(typeof module != 'undefined' && module.exports) module.exports = Promise;
+  else if(typeof define ==='function' && define.amd) define(Promise); 
+  else root.Promise = Promise;
 })(window);
