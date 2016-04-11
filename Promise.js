@@ -168,12 +168,6 @@ bug1:
   function _execThenOf(thenCalledPro){//async then calling
     _microDefer(null,_execThenCb,[thenCalledPro,0]);
   }
-  function _microThen(thisArg){//sync then calling
-    var pro_placeholder=new thisArg.constructor(),pro_air;
-    thisArg.subPromiseArr.push(pro_placeholder);
-    _microDefer(null,_execThenCb,[thisArg,1]);
-    return pro_placeholder;//
-  }
   function Promise(executor) {
       this.state = "pending";
       this.fullfilFunArr = [];
@@ -214,16 +208,11 @@ bug1:
   Promise.prototype.then = function(f, r) {
       this.fullfilFunArr.push(f || null);
       this.rejectFunArr.push(r || null);
-      var result,thenGenePro;
-      //async:wait and _microDefer;
-      //sync:microDefer;
-      if(this.state == 'pending'){
-        thenGenePro=new this.constructor();
-        this.subPromiseArr.push(thenGenePro);//async,we call this empty promise "promise_Holder".
-        return thenGenePro;
-      }else{
-        return _microThen(this);
-      }
+      //always return a empty promise,--promise_Holder
+      var thenGenePro = new this.constructor();
+      this.subPromiseArr.push(thenGenePro);
+      this.state != 'pending' && _microDefer(null,_execThenCb,[this,1]);
+      return thenGenePro;
   };
   Promise.prototype.catch=function(callback){
     return this.then(null,callback);
