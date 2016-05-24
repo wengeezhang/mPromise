@@ -47,6 +47,7 @@ bug1:
     a.then()
 
   问题点：promise_air_A对应的promise_holder是另外一个promise_holder的promise_air
+  fd
 */
 (function(root){
   function _microDefer(thisArg,cb,arr){
