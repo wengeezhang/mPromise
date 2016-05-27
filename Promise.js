@@ -163,19 +163,21 @@ bug1:
       this.placeholder=null;
       if(!executor){//can aslo add '||typeof executor != "function"'
         return;
-      }
+      };
       var that = this,that_placeholder; 
       function _resrej(result,state){
         //_ship(that,result,state);
         if(result instanceof that.constructor){
           result.placeholder=that;//do not delete:return chain
-          if(result.state != 'pending'){
-            _ship(that,result.result,state);//这里ship状态时，一定要是_resrej的参数state，因为Promise内部已经确认是res/rej，不能依赖链式中的结果
-          }
+          if(state == 'rejected'){
+            _ship(that,result,'rejected');
+          }else{
+            _ship(that,result.result,result.state);
+          };
         }else{//pro_air is string/object
-          _ship(that,result,'resolved');
-        }
-      }
+          _ship(that,result,state);
+        };
+      };
       //entry point
       executor(function(e) {
           _resrej(e,"resolved");
