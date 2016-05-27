@@ -170,7 +170,7 @@ bug1:
         if(result instanceof that.constructor){
           result.placeholder=that;//do not delete:return chain
           if(result.state != 'pending'){
-            _ship(that,result.result,result.state);
+            _ship(that,result.result,state);//这里ship状态时，一定要是_resrej的参数state，因为Promise内部已经确认是res/rej，不能依赖链式中的结果
           }
         }else{//pro_air is string/object
           _ship(that,result,'resolved');
