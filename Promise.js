@@ -65,7 +65,7 @@ bug1:
   function _placeholder_subprosCheck(promise_holder){//the only aim:check subPromise exist
     //1.check placeholder
     if(promise_holder.placeholder){
-      _shipandcheck(promise_holder.placeholder,promise_holder.result,promise_holder.state);
+      _ship(promise_holder.placeholder,promise_holder.result,promise_holder.state);
     };
     if(promise_holder.subPromiseArr.length){
       _execThenOf(promise_holder);
@@ -118,20 +118,20 @@ bug1:
     }
     //check thenCb null
     if(thenCb===null){
-      _shipandcheck(promise_holder,supResult,flag.state);
+      _ship(promise_holder,supResult,flag.state);
       return;
     }
     pro_air=thenCb(supResult);
     if(pro_air instanceof promise_holder.constructor){
       pro_air.placeholder=promise_holder;//do not delete:return chain
       if(pro_air.state != 'pending'){
-        _shipandcheck(promise_holder,pro_air.result,pro_air.state);
+        _ship(promise_holder,pro_air.result,pro_air.state);
       }
     }else{//pro_air is string/object
-      _shipandcheck(promise_holder,pro_air,'resolved');
+      _ship(promise_holder,pro_air,'resolved');
     }
   }
-  function _shipandcheck(promise_holder,result,state){
+  function _ship(promise_holder,result,state){
     promise_holder.state=state;
     promise_holder.result=result;
     _placeholder_subprosCheck(promise_holder);
@@ -166,14 +166,14 @@ bug1:
       }
       var that = this,that_placeholder; 
       function _resrej(result,state){
-        //_shipandcheck(that,result,state);
+        //_ship(that,result,state);
         if(result instanceof that.constructor){
           result.placeholder=that;//do not delete:return chain
           if(result.state != 'pending'){
-            _shipandcheck(that,result.result,result.state);
+            _ship(that,result.result,result.state);
           }
         }else{//pro_air is string/object
-          _shipandcheck(that,result,'resolved');
+          _ship(that,result,'resolved');
         }
       }
       //entry point
