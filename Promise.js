@@ -71,54 +71,23 @@ bug1:
       _execThenOf(promise_holder);
     }; 
   };  
-  function _checkResultOf(result,fatherPro,flag){
-    if(result && result instanceof fatherPro.constructor){
-      if(result.state == 'pending'){
-        result.placeholder=fatherPro;
-        flag.hangup=true;
-        return;
-      }else{
-        flag.state=result.state;
-        return _checkResultOf(result.result,fatherPro,flag);
-      }
-    }else if(result && typeof result.then == 'function'){
-      var callResolve=false,supResult;
-      result.then(function(val){
-        supResult=val;callResolve=true;
-        flag.state="resolved";
-      },function(val){
-        supResult=val;callResolve=true;
-        flag.state="rejected";
-      });
-      if(!callResolve){flag.hangup=true;return;}
-      return _checkResultOf(supResult,fatherPro,flag);
-    }else{
-      return result;
-    }
-  }
-  function _thenCbExeAndAircheck(promise_holder,fatherPro){
+  function _thenCallback_Exec(promise_holder,fatherPro){
+    //then's callback执行前，首先要对fatherPro的result检测，看是否为thenable
+    //而不是检测thenCb()的运行结果，thenCb的不用检查，要等到它的下一次then时再检测
     var supResult,thenCb,flag={hangup:false};
     //select thenCb,supResult
+    supResult = fatherPro.result;
     if(fatherPro.state == 'resolved'){
-      flag.state="resolved";//init,may be changed in _checkResultOf
-      //two scenes that will change state:result is sync promise instance or thenable
-      supResult = _checkResultOf(fatherPro.result,fatherPro,flag);
-      if(flag.hangup){
-        return;
-      }
-      if(flag.state=="resolved"){
-        thenCb=promise_holder.fullfilFun;
-      }else{
-        thenCb=promise_holder.rejectFun;
-      }
+      thenCb=promise_holder.fullfilFun;
     }else{
-      flag.state="rejected";
-      supResult = fatherPro.result;
       thenCb=promise_holder.rejectFun;
     }
+    
+
+
     //check thenCb null
-    if(thenCb===null){
-      _ship(promise_holder,supResult,flag.state);
+    if(thenCb === undefined){//延续祖辈的结果和状态
+      _ship(promise_holder,supResult,fatherPro.state);
       return;
     }
     pro_air=thenCb(supResult);
@@ -127,10 +96,16 @@ bug1:
       if(pro_air.state != 'pending'){
         _ship(promise_holder,pro_air.result,pro_air.state);
       }
+    }else if(pro_air && typeof pro_air.then == 'function'){
+      var then_promise = new promise_holder.constructor(pro_air.then);
+      then_promise.placeholder = promise_holder;
+      if(then_promise.state != 'pending'){
+        _ship(promise_holder,then_promise.result,then_promise.state);
+      }
     }else{//pro_air is string/object
       _ship(promise_holder,pro_air,'resolved');
     }
-  }
+  } 
   function _ship(promise_holder,result,state){
     promise_holder.state=state;
     promise_holder.result=result;
@@ -141,7 +116,7 @@ bug1:
     var thenCbArr,promise_holder;
     for(var i=0,len=thenCalledPro.subPromiseArr.length;i<len;i++){
         promise_holder=thenCalledPro.subPromiseArr[i];
-        _thenCbExeAndAircheck(promise_holder,thenCalledPro);
+        _thenCallback_Exec(promise_holder,thenCalledPro);
     };
     thenCalledPro.subPromiseArr=[];
   }
@@ -171,8 +146,19 @@ bug1:
           result.placeholder=that;//do not delete:return chain
           if(state == 'rejected'){
             _ship(that,result,'rejected');
-          }else{
+          }else if(state == 'resolved'){
             _ship(that,result.result,result.state);
+          };
+        }else if(result && typeof result.then == 'function'){
+          if(state == 'rejected'){
+            _ship(that,result,'rejected');
+          }else if(state == 'resolved'){
+            var then_promise = new that.constructor(result.then);
+            then_promise.placeholder = that;
+            _ship(that,then_promise.result,then_promise.state);
+          }else{//pending
+            var then_promise = new that.constructor(result.then);
+            then_promise.placeholder = that;
           };
         }else{//pro_air is string/object
           _ship(that,result,state);
