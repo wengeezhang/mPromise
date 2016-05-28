@@ -107,16 +107,14 @@ bug1:
     var thenCbArr,promise_holder;
     var supResult = thenCalledPro.result;
     if(supResult && typeof supResult.then == 'function' && !(supResult instanceof thenCalledPro.constructor)){
-      if(thenCalledPro.resrej && thenCalledPro.state == 'rejected'){
-
-      }else{
+      if(!thenCalledPro.resrej || thenCalledPro.state == 'resolved'){
         var then_promise = new thenCalledPro.constructor(supResult.then);
         then_promise.placeholder = thenCalledPro;
         if(then_promise.state != 'pending'){
           _ship(thenCalledPro,then_promise.result,then_promise.state);
         }
         return;
-      };
+      }
     };
     //supResult:string/obj/(rej(thenable))
     for(var i=0,len=thenCalledPro.subPromiseArr.length;i<len;i++){
