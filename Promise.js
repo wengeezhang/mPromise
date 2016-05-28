@@ -74,7 +74,7 @@ bug1:
   function _thenCallback_Exec(promise_holder,fatherPro){
     //then's callback执行前，首先要对fatherPro的result检测，看是否为thenable
     //而不是检测thenCb()的运行结果，thenCb的不用检查，要等到它的下一次then时再检测
-    var supResult,thenCb,flag={hangup:false};
+    var supResult,thenCb;
     //select thenCb,supResult
     supResult = fatherPro.result;
     if(fatherPro.state == 'resolved'){
@@ -82,11 +82,8 @@ bug1:
     }else{
       thenCb=promise_holder.rejectFun;
     }
-    
-
-
     //check thenCb null
-    if(thenCb === undefined){//延续祖辈的结果和状态
+    if(typeof thenCb != 'function'){//延续祖辈的结果和状态
       _ship(promise_holder,supResult,fatherPro.state);
       return;
     }
@@ -96,13 +93,7 @@ bug1:
       if(pro_air.state != 'pending'){
         _ship(promise_holder,pro_air.result,pro_air.state);
       }
-    }else if(pro_air && typeof pro_air.then == 'function'){
-      var then_promise = new promise_holder.constructor(pro_air.then);
-      then_promise.placeholder = promise_holder;
-      if(then_promise.state != 'pending'){
-        _ship(promise_holder,then_promise.result,then_promise.state);
-      }
-    }else{//pro_air is string/object
+    }else{//pro_air is string/object/thenable
       _ship(promise_holder,pro_air,'resolved');
     }
   } 
@@ -114,10 +105,25 @@ bug1:
   function _execThenCb(thenCalledPro,sync){
      //thenCalledPro:promise calling "then"
     var thenCbArr,promise_holder;
+    var supResult = thenCalledPro.result;
+    if(supResult && typeof supResult.then == 'function' && !(supResult instanceof thenCalledPro.constructor)){
+      if(thenCalledPro.resrej && thenCalledPro.state == 'rejected'){
+
+      }else{
+        var then_promise = new thenCalledPro.constructor(supResult.then);
+        then_promise.placeholder = thenCalledPro;
+        if(then_promise.state != 'pending'){
+          _ship(thenCalledPro,then_promise.result,then_promise.state);
+        }
+        return;
+      };
+    };
+    //supResult:string/obj/(rej(thenable))
     for(var i=0,len=thenCalledPro.subPromiseArr.length;i<len;i++){
         promise_holder=thenCalledPro.subPromiseArr[i];
         _thenCallback_Exec(promise_holder,thenCalledPro);
     };
+
     thenCalledPro.subPromiseArr=[];
   }
   function _execThenOf(thenCalledPro){//async then calling
@@ -150,16 +156,8 @@ bug1:
             _ship(that,result.result,result.state);
           };
         }else if(result && typeof result.then == 'function'){
-          if(state == 'rejected'){
-            _ship(that,result,'rejected');
-          }else if(state == 'resolved'){
-            var then_promise = new that.constructor(result.then);
-            then_promise.placeholder = that;
-            _ship(that,then_promise.result,then_promise.state);
-          }else{//pending
-            var then_promise = new that.constructor(result.then);
-            then_promise.placeholder = that;
-          };
+          that.resrej = true;
+          _ship(that,result,state);
         }else{//pro_air is string/object
           _ship(that,result,state);
         };
