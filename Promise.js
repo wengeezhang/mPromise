@@ -3,12 +3,10 @@ author:wengeezhang;
 version:2.0;
 updated 2015/7/15
 update:microtask,res(async/sync-promise)
-
 ************
 *interface
 prototype:     then,catch
 static method: all,race,resolve,reject
-
 ************
 ** EXAMPLE
 x_promise.then(F1,F2).then(F3,F4).[---].then(Fm,Fn).
@@ -19,34 +17,27 @@ promise_Holder: an empty promise returned immediately by x_promise.then(F1,F2).I
 promise_air:    a promise returned by F1/2();Not in chain.
 placeholder:    a property of promise_air;    It refers to promise_Holder.
 promise_air.placeholder=promise_Holder.
-
 ************
 promise_Holder is in the chain and holds original information(subPromise) of the chain.
 promise_air isn't in chain,but it can self be executed in the future and will catch the result and state.
 finally,refresh promise_Holder's info with promise_air's. (bridge is placeholder)
 *:then's inner's return is a promise_air,and it's placeholder is then's promise_Holder.
-
 *IMPORTANT:
 Every <then> has its only one return,and this return creats/is the promise_air;
 When return a chain,returning the last <then>'s promise_Holder; 
-
 So,when we check a <then>'s promise_air,this promise_air's *promise_Holder* 
      *may has subPromises,
      *may be the end of a chain and be returned,so it becomes another promise_air
 And any <then> being the end of a chain which is returned inside another <then> must be checked because of bug1
-
 **due to including of microtask,sync process is also pending,so _placeholderSubprosCheck must be an iterator.
 very tip:******as for any promise that need subPromise check in future,just set air.placeholder to it.
-
 ****very important:
 'parallel subPromise check' checks curSubPromise.subPromiseArr.length
 '_placeholderSubprosCheck'  checks curSubPromise.placeholder
-
 ************
 principle 1: every promise in a chain can't be replaced considering correct referring
 principle 2: one promise can have only one fullfilResult/rejectResult,but can have an array of fullfilFuns/rejecFuns or subPromises
 It's meanless but throw no error:var a=new Promise(function(res,rej){res("wai");return new Promise(function(res,rej){res("nei");})})
-
 ************
 bug1:
     then()'s return--promise chain;
@@ -54,6 +45,8 @@ bug1:
           return y_promise.then(function(){/ajax process/});
     })
     a.then()
+
+  问题点：promise_air_A对应的promise_holder是另外一个promise_holder的promise_air
 */
 (function(root){
   function _microDefer(thisArg,cb,arr){
@@ -68,142 +61,105 @@ bug1:
     }else{
       setTimeout(function(){cb.apply(thisArg,arr);},0);
     }
-  }
-  function _placeholderSubprosCheck(promise_air){//the only aim:check subPromise exist
-    if(promise_air.placeholder){
-      //promise_air may be then end of a chain which is returned inside a <then>
-      //so that_placeholder becomes a promise_air
-      _shipandAircheck(promise_air.placeholder,promise_air.result,promise_air.state);
-      if(promise_air.placeholder.subPromiseArr.length){
-        _execThenOf(promise_air.placeholder);
-      }
-    }
-  }
-  function _checkResultOf(result,fatherPro,flag){
-    if(result && result instanceof fatherPro.constructor){
-      if(result.state == 'pending'){
-        result.placeholder=fatherPro;
-        flag.hangup=true;
-        return;
-      }else{
-        flag.state=result.state;
-        return _checkResultOf(result.result,fatherPro,flag);
-      }
-    }else if(result && typeof result.then == 'function'){
-      var callResolve=false,supResult;
-      result.then(function(val){
-        supResult=val;callResolve=true;
-        flag.state="resolved";
-      },function(val){
-        supResult=val;callResolve=true;
-        flag.state="rejected";
-      });
-      if(!callResolve){flag.hangup=true;return;}
-      return _checkResultOf(supResult,fatherPro,flag);
-    }else{
-      return result;
-    }
-  }
-  function _thenCbExeAndAircheck(pro_placeholder,fatherPro,index){
-    var supResult,thenCb,flag={hangup:false};
+  };
+  function _placeholder_subprosCheck(promise_holder){//the only aim:check subPromise exist
+    //1.check placeholder
+    if(promise_holder.placeholder){
+      _ship(promise_holder.placeholder,promise_holder.result,promise_holder.state);
+    };
+    if(promise_holder.subPromiseArr.length){
+      _execThenOf(promise_holder);
+    }; 
+  };  
+  function _thenCallback_Exec(promise_holder,fatherPro){
+    //then's callback执行前，首先要对fatherPro的result检测，看是否为thenable
+    //而不是检测thenCb()的运行结果，thenCb的不用检查，要等到它的下一次then时再检测
+    var supResult,thenCb;
     //select thenCb,supResult
+    supResult = fatherPro.result;
     if(fatherPro.state == 'resolved'){
-      flag.state="resolved";//init,may be changed in _checkResultOf
-      //two scenes that will change state:result is sync promise instance or thenable
-      supResult = _checkResultOf(fatherPro.result,fatherPro,flag);
-      if(flag.hangup){
-        return;
-      }
-      if(flag.state=="resolved"){
-        thenCb=fatherPro.fullfilFunArr[index];
-      }else{
-        thenCb=fatherPro.rejectFunArr[index];
-      }
+      thenCb=promise_holder.fullfilFun;
     }else{
-      flag.state="rejected";
-      supResult = fatherPro.result;
-      thenCb=fatherPro.rejectFunArr[index];
+      thenCb=promise_holder.rejectFun;
     }
     //check thenCb null
-    if(thenCb===null){
-      _shipandAircheck(pro_placeholder,supResult,flag.state);
+    if(typeof thenCb != 'function'){//延续祖辈的结果和状态
+      _ship(promise_holder,supResult,fatherPro.state);
       return;
     }
     pro_air=thenCb(supResult);
-    fatherPro.thened=true;//must not in "check thenCb null".
-    if(pro_air instanceof pro_placeholder.constructor){
-      pro_air.placeholder=pro_placeholder;//do not delete:return chain
+    if(pro_air instanceof promise_holder.constructor){
+      pro_air.placeholder=promise_holder;//do not delete:return chain
       if(pro_air.state != 'pending'){
-        _shipandAircheck(pro_placeholder,pro_air.result,pro_air.state);
+        _ship(promise_holder,pro_air.result,pro_air.state);
       }
-    }else{//pro_air is string/object
-      _shipandAircheck(pro_placeholder,pro_air,'resolved');
+    }else{//pro_air is string/object/thenable
+      _ship(promise_holder,pro_air,'resolved');
     }
-  }
-  function _shipandAircheck(proHolder,result,state){
-    proHolder.state=state;
-    proHolder.result=result;
-    _placeholderSubprosCheck(proHolder);
+  } 
+  function _ship(promise_holder,result,state){
+    promise_holder.state=state;
+    promise_holder.result=result;
+    _placeholder_subprosCheck(promise_holder);
   }
   function _execThenCb(thenCalledPro,sync){
      //thenCalledPro:promise calling "then"
-    var thenCbArr,pro_placeholder,subPromiseLen;
-    subPromiseLen=thenCalledPro.subPromiseArr.length;
-    if(thenCalledPro.thened){return;}//a.then a.then a-sync;
-    //thenCalledPro.thened=true moveto _thenCbExeAndAircheck
-    for(var i=0;i<subPromiseLen;i++){
-        pro_placeholder=thenCalledPro.subPromiseArr[i];
-        _thenCbExeAndAircheck(pro_placeholder,thenCalledPro,i);
-    }
-    //parallel subPromise check
-    for(var j=0;j<subPromiseLen;j++){
-      pro_placeholder=thenCalledPro.subPromiseArr[j];
-      if(pro_placeholder.state != 'pending'){
-        if(pro_placeholder.subPromiseArr.length){
-          _execThenOf(pro_placeholder);
+    var thenCbArr,promise_holder;
+    var supResult = thenCalledPro.result;
+    if(supResult && typeof supResult.then == 'function' && !(supResult instanceof thenCalledPro.constructor)){
+      if(!thenCalledPro.resrej || thenCalledPro.state == 'resolved'){
+        var then_promise = new thenCalledPro.constructor(supResult.then);
+        then_promise.placeholder = thenCalledPro;
+        if(then_promise.state != 'pending'){
+          _ship(thenCalledPro,then_promise.result,then_promise.state);
         }
-      }//else:result instanceof Promise,so it's then will be called in the future.
-    }
+        return;
+      }
+    };
+    //supResult:string/obj/(rej(thenable))
+    for(var i=0,len=thenCalledPro.subPromiseArr.length;i<len;i++){
+        promise_holder=thenCalledPro.subPromiseArr[i];
+        _thenCallback_Exec(promise_holder,thenCalledPro);
+    };
+
+    thenCalledPro.subPromiseArr=[];
   }
   function _execThenOf(thenCalledPro){//async then calling
     _microDefer(null,_execThenCb,[thenCalledPro,0]);
   }
-  function _microThen(thisArg){//sync then calling
-    var pro_placeholder=new thisArg.constructor(),pro_air;
-    thisArg.subPromiseArr.push(pro_placeholder);
+  function _microThen(thisArg,f,r){//sync then calling
+    var promise_holder=new thisArg.constructor(),pro_air;
+    promise_holder.fullfilFun = f;
+    promise_holder.rejectFun = r;
+    thisArg.subPromiseArr.push(promise_holder);
     _microDefer(null,_execThenCb,[thisArg,1]);
-    return pro_placeholder;//
+    return promise_holder;//
   }
   function Promise(executor) {
       this.state = "pending";
-      this.fullfilFunArr = [];
-      this.rejectFunArr = [];
-      this.thened=false;
       this.result = null;//only one-resolved/rejected
       this.subPromiseArr = [];
       this.placeholder=null;
       if(!executor){//can aslo add '||typeof executor != "function"'
         return;
-      }
+      };
       var that = this,that_placeholder; 
       function _resrej(result,state){
-        that.state = state;
-        that.result = result;
-        if(that.placeholder){
-          that_placeholder=that.placeholder;
-          that_placeholder.result=result;
-          that_placeholder.state=state;
-          if(that_placeholder.subPromiseArr.length){//looks forward 
-            _execThenOf(that_placeholder);
-          }
-          //below fixes bug1:
-          _placeholderSubprosCheck(that_placeholder);
-        }else{
-          if(that.subPromiseArr.length){
-            _execThenOf(that);
-          }
-        }
-      }
+        //_ship(that,result,state);
+        if(result instanceof that.constructor){
+          result.placeholder=that;//do not delete:return chain
+          if(state == 'rejected'){
+            _ship(that,result,'rejected');
+          }else if(state == 'resolved'){
+            _ship(that,result.result,result.state);
+          };
+        }else if(result && typeof result.then == 'function'){
+          that.resrej = true;
+          _ship(that,result,state);
+        }else{//pro_air is string/object
+          _ship(that,result,state);
+        };
+      };
       //entry point
       executor(function(e) {
           _resrej(e,"resolved");
@@ -212,17 +168,17 @@ bug1:
       });
   }
   Promise.prototype.then = function(f, r) {
-      this.fullfilFunArr.push(f || null);
-      this.rejectFunArr.push(r || null);
       var result,thenGenePro;
       //async:wait and _microDefer;
       //sync:microDefer;
       if(this.state == 'pending'){
         thenGenePro=new this.constructor();
+        thenGenePro.fullfilFun = f;
+        thenGenePro.rejectFun = r;
         this.subPromiseArr.push(thenGenePro);//async,we call this empty promise "promise_Holder".
         return thenGenePro;
       }else{
-        return _microThen(this);
+        return _microThen(this,f,r);
       }
   };
   Promise.prototype.catch=function(callback){

@@ -200,3 +200,18 @@ new Promise(function(res,rej){res(undefined);}).then(function(val){console.log(v
 //打印1,2，然后才打印3
 Promise.resolve(new Promise(function(res,rej){console.log(1);res(2);})).then(function(val){console.log(val);});
 Promise.resolve(3).then(function(val){console.log(val);});
+
+
+//16.打印顺序是d,1,null,undefiined,dd,
+//而不是d,1,dd,null,undefined
+//充分证明，下面的样例b，先microThen，发现superResult是thenable,于是修改father的状态，重新跑一遍
+//即再跑的过程中，又实用micro
+//a.
+new Promise(function(res,rej){res('d');}).then(function(val){console.log(val);}); 
+//b.
+Promise.resolve({then:function(d){console.log(1);d('dd');}}).then(function(val){console.log(val);});
+//c.log:null
+new Promise(function(res,rej){res(null);}).then(function(val){console.log(val);});
+//d.log:undefined
+new Promise(function(res,rej){res(undefined);}).then(function(val){console.log(val);});
+
