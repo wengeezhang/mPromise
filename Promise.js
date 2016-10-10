@@ -1,13 +1,16 @@
 /*
+** version
 author:wengeezhang;
-version:2.0;
-updated 2015/7/15
-update:microtask,res(async/sync-promise)
+version:2.1;
+updated 2015/10/08
+update:annotations
 ************
-*interface
+
+** interface
 prototype:     then,catch
 static method: all,race,resolve,reject
 ************
+
 ** EXAMPLE
 x_promise.then(F1,F2).then(F3,F4).[---].then(Fm,Fn).
 ** ANALYSIS
@@ -18,28 +21,19 @@ promise_air:    a promise returned by F1/2();Not in chain.
 placeholder:    a property of promise_air;    It refers to promise_Holder.
 promise_air.placeholder=promise_Holder.
 ************
-promise_Holder is in the chain and holds original information(subPromise) of the chain.
-promise_air isn't in chain,but it can self be executed in the future and will catch the result and state.
-finally,refresh promise_Holder's info with promise_air's. (bridge is placeholder)
-*:then's inner's return is a promise_air,and it's placeholder is then's promise_Holder.
-*IMPORTANT:
-Every <then> has its only one return,and this return creats/is the promise_air;
-When return a chain,returning the last <then>'s promise_Holder; 
-So,when we check a <then>'s promise_air,this promise_air's *promise_Holder* 
-     *may has subPromises,
-     *may be the end of a chain and be returned,so it becomes another promise_air
-And any <then> being the end of a chain which is returned inside another <then> must be checked because of bug1
-**due to including of microtask,sync process is also pending,so _placeholderSubprosCheck must be an iterator.
-very tip:******as for any promise that need subPromise check in future,just set air.placeholder to it.
-****very important:
-'parallel subPromise check' checks curSubPromise.subPromiseArr.length
-'_placeholderSubprosCheck'  checks curSubPromise.placeholder
-************
-principle 1: every promise in a chain can't be replaced considering correct referring
-principle 2: one promise can have only one fullfilResult/rejectResult,but can have an array of fullfilFuns/rejecFuns or subPromises
+
+** principles
+1.every promise in a chain can't be replaced considering correct referring
+2.one promise can have only one fullfilResult/rejectResult,but can have an array of fullfilFuns/rejecFuns or subPromises
 It's meanless but throw no error:var a=new Promise(function(res,rej){res("wai");return new Promise(function(res,rej){res("nei");})})
 ************
-bug1:
+
+** code model
+* when promise's finished,always use "ship" to resume tasks of the chain
+* _placeholder_subprosCheck function do two things:1.check _placeholder;2.check subpros;
+************
+
+** bug1:
     then()'s return--promise chain;
     var a=x_promise.then(function(value){
           return y_promise.then(function(){/ajax process/});
