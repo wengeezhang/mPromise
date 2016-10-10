@@ -196,6 +196,7 @@ new Promise(function(res,rej){res(null);}).then(function(val){console.log(val);}
 new Promise(function(res,rej){res(undefined);}).then(function(val){console.log(val);});
 
 
+
 //15.new Promise内部为同步过程 验证样例
 //打印1,2，然后才打印3
 Promise.resolve(new Promise(function(res,rej){console.log(1);res(2);})).then(function(val){console.log(val);});
@@ -214,4 +215,3 @@ Promise.resolve({then:function(d){console.log(1);d('dd');}}).then(function(val){
 new Promise(function(res,rej){res(null);}).then(function(val){console.log(val);});
 //d.log:undefined
 new Promise(function(res,rej){res(undefined);}).then(function(val){console.log(val);});
-
