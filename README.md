@@ -1,3 +1,11 @@
+# Description
+
+A hand-written JavaScript Promise implementation (mPromise) created circa 2015. This project builds an ES6 Promise from scratch, covering the core API surface: prototype methods (`then`, `catch`) and static methods (`Promise.all`, `Promise.race`, `Promise.resolve`, `Promise.reject`).
+
+The implementation introduces several key concepts to handle chained and nested promises. A `promise_holder` is the empty Promise returned immediately by `then()` as a placeholder, while a `promise_air` is the Promise returned by the `then` callback at execution time. These two are linked via a `placeholder` property so that chain results propagate correctly. Async scheduling uses `_microDefer`, which selects `MutationObserver` > `MessageChannel` > `setTimeout` by priority to simulate microtask behavior.
+
+The project includes 18 test scenarios in `test_example.js`, covering chained calls, nested returns, thenable objects, `res(promise)`, and microtask/macrotask execution ordering.
+
 # Promise
 ### 1.Interface:
 ##### prototype:
